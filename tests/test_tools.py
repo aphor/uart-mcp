@@ -1,4 +1,4 @@
-"""MCP 工具测试"""
+"""Tests for MCP tools."""
 
 from unittest.mock import patch
 
@@ -8,10 +8,10 @@ from uart_mcp.types import PortInfo, PortStatus, SerialConfig
 
 
 class TestListPortsTool:
-    """测试 list_ports 工具"""
+    """Tests for the list_ports tool."""
 
     def test_list_ports_returns_list(self):
-        """测试返回列表格式"""
+        """Test that the result is a list."""
         with patch("uart_mcp.tools.list_ports.get_serial_manager") as mock_manager:
             mock_manager.return_value.list_ports.return_value = [
                 PortInfo(
@@ -26,7 +26,7 @@ class TestListPortsTool:
             assert result[0]["port"] == "/dev/ttyUSB0"
 
     def test_list_ports_empty(self):
-        """测试空列表"""
+        """Test the empty-list case."""
         with patch("uart_mcp.tools.list_ports.get_serial_manager") as mock_manager:
             mock_manager.return_value.list_ports.return_value = []
 
@@ -36,10 +36,10 @@ class TestListPortsTool:
 
 
 class TestOpenPortTool:
-    """测试 open_port 工具"""
+    """Tests for the open_port tool."""
 
     def test_open_port_default_config(self):
-        """测试使用默认配置打开"""
+        """Test opening with the default configuration."""
         with patch("uart_mcp.tools.port_ops.get_serial_manager") as mock_manager:
             mock_status = PortStatus(
                 port="/dev/ttyUSB0",
@@ -55,7 +55,7 @@ class TestOpenPortTool:
             assert result["port"] == "/dev/ttyUSB0"
 
     def test_open_port_custom_config(self):
-        """测试使用自定义配置打开"""
+        """Test opening with a custom configuration."""
         with patch("uart_mcp.tools.port_ops.get_serial_manager") as mock_manager:
             config = SerialConfig(baudrate=115200)
             mock_status = PortStatus(
@@ -74,10 +74,10 @@ class TestOpenPortTool:
 
 
 class TestClosePortTool:
-    """测试 close_port 工具"""
+    """Tests for the close_port tool."""
 
     def test_close_port_success(self):
-        """测试成功关闭"""
+        """Test successful close."""
         with patch("uart_mcp.tools.port_ops.get_serial_manager") as mock_manager:
             mock_manager.return_value.close_port.return_value = {
                 "success": True,
@@ -90,10 +90,10 @@ class TestClosePortTool:
 
 
 class TestSetConfigTool:
-    """测试 set_config 工具"""
+    """Tests for the set_config tool."""
 
     def test_set_config_partial(self):
-        """测试部分更新配置"""
+        """Test a partial configuration update."""
         with patch("uart_mcp.tools.port_ops.get_serial_manager") as mock_manager:
             config = SerialConfig(baudrate=115200)
             mock_status = PortStatus(
@@ -109,10 +109,10 @@ class TestSetConfigTool:
 
 
 class TestGetStatusTool:
-    """测试 get_status 工具"""
+    """Tests for the get_status tool."""
 
     def test_get_status_success(self):
-        """测试成功获取状态"""
+        """Test successful status retrieval."""
         with patch("uart_mcp.tools.port_ops.get_serial_manager") as mock_manager:
             config = SerialConfig()
             mock_status = PortStatus(

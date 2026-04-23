@@ -1,1 +1,1 @@
-"""MCP工具实现模块"""
+"""MCP tool implementation module."""

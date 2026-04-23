@@ -1,4 +1,4 @@
-"""pytest 配置和共享 fixtures"""
+"""pytest configuration and shared fixtures."""
 
 import threading
 from unittest.mock import MagicMock, patch
@@ -7,9 +7,10 @@ import pytest
 
 
 class MockSerialLoopback:
-    """模拟串口回环的 Serial 类
+    """Mock Serial class that simulates a serial loopback.
 
-    写入的数据会自动进入读取缓冲区，模拟TX/RX短接的回环效果
+    Data written is automatically fed back into the read buffer, simulating
+    the loopback effect of physically tying TX to RX.
     """
 
     def __init__(self, port=None, baudrate=9600, bytesize=8, parity='N',
@@ -26,7 +27,7 @@ class MockSerialLoopback:
         self.rtscts = rtscts
 
         self._is_open = True
-        self._buffer = bytearray()  # 回环缓冲区
+        self._buffer = bytearray()  # Loopback buffer
         self._lock = threading.Lock()
 
     @property
@@ -45,9 +46,9 @@ class MockSerialLoopback:
         self._is_open = False
 
     def write(self, data):
-        """写入数据，同时放入读取缓冲区（回环）"""
+        """Write data and also push it into the read buffer (loopback)."""
         if not self._is_open:
-            raise Exception("串口未打开")
+            raise Exception("Serial port is not open")
         if isinstance(data, str):
             data = data.encode('utf-8')
         with self._lock:
@@ -55,36 +56,36 @@ class MockSerialLoopback:
         return len(data)
 
     def read(self, size=1):
-        """从缓冲区读取数据"""
+        """Read data from the buffer."""
         if not self._is_open:
-            raise Exception("串口未打开")
+            raise Exception("Serial port is not open")
         with self._lock:
             data = bytes(self._buffer[:size])
             self._buffer = self._buffer[size:]
         return data
 
     def read_all(self):
-        """读取所有可用数据"""
+        """Read all available data."""
         with self._lock:
             data = bytes(self._buffer)
             self._buffer.clear()
         return data
 
     def reset_input_buffer(self):
-        """清空输入缓冲区"""
+        """Clear the input buffer."""
         with self._lock:
             self._buffer.clear()
 
     def reset_output_buffer(self):
-        """清空输出缓冲区（模拟）"""
+        """Clear the output buffer (simulated)."""
         pass
 
     def flush(self):
-        """刷新输出"""
+        """Flush output."""
         pass
 
     def apply_settings(self, settings):
-        """应用配置设置（热更新）"""
+        """Apply configuration settings (hot update)."""
         if "baudrate" in settings:
             self.baudrate = settings["baudrate"]
         if "bytesize" in settings:
@@ -100,8 +101,8 @@ class MockSerialLoopback:
 
 
 class MockPortInfo:
-    """模拟串口信息对象"""
-    def __init__(self, device, description="模拟串口", hwid="MOCK_HWID"):
+    """Mock serial port info object."""
+    def __init__(self, device, description="Mock serial port", hwid="MOCK_HWID"):
         self.device = device
         self.description = description
         self.hwid = hwid
@@ -109,7 +110,7 @@ class MockPortInfo:
 
 @pytest.fixture
 def mock_serial():
-    """模拟 pyserial Serial 对象"""
+    """Mock a pyserial Serial object."""
     with patch("serial.Serial") as mock:
         serial_instance = MagicMock()
         serial_instance.is_open = True
@@ -120,9 +121,9 @@ def mock_serial():
 
 @pytest.fixture
 def mock_serial_loopback():
-    """模拟串口回环 - 写入数据自动进入读取缓冲区
+    """Mock a serial loopback: written data is fed back into the read buffer.
 
-    用于集成测试，模拟真实硬件的回环效果
+    Used by integration tests to simulate the loopback behavior of real hardware.
     """
     mock_instances = {}
 
@@ -138,17 +139,19 @@ def mock_serial_loopback():
 
 @pytest.fixture
 def mock_list_ports():
-    """模拟 serial.tools.list_ports.comports()"""
+    """Mock serial.tools.list_ports.comports()."""
     with patch("serial.tools.list_ports.comports") as mock:
         yield mock
 
 
 @pytest.fixture
 def mock_list_ports_with_devices():
-    """模拟返回设备列表的 list_ports"""
+    """Mock list_ports to return a list of devices."""
     mock_ports = [
-        MockPortInfo("/dev/ttyMOCK0", "模拟USB串口", "USB VID:PID=1234:5678"),
-        MockPortInfo("/dev/ttyMOCK1", "模拟蓝牙串口", "BT ADDR=00:11:22:33:44:55"),
+        MockPortInfo("/dev/ttyMOCK0", "Mock USB serial port", "USB VID:PID=1234:5678"),
+        MockPortInfo(
+            "/dev/ttyMOCK1", "Mock Bluetooth serial port", "BT ADDR=00:11:22:33:44:55"
+        ),
     ]
     with patch("serial.tools.list_ports.comports", return_value=mock_ports):
         yield mock_ports
@@ -156,7 +159,7 @@ def mock_list_ports_with_devices():
 
 @pytest.fixture
 def mock_blacklist_empty():
-    """模拟空黑名单"""
+    """Mock an empty blacklist."""
     with patch("uart_mcp.config.get_blacklist_path") as mock_path:
         mock_path.return_value.exists.return_value = False
         yield mock_path
@@ -164,20 +167,20 @@ def mock_blacklist_empty():
 
 @pytest.fixture
 def reset_managers():
-    """重置全局管理器状态，用于隔离测试"""
-    # 保存原状态
+    """Reset global manager state to isolate tests."""
+    # Save the original state
     from uart_mcp import serial_manager, terminal_manager
 
     old_serial = serial_manager._serial_manager
     old_terminal = terminal_manager._terminal_manager
 
-    # 重置为 None
+    # Reset to None
     serial_manager._serial_manager = None
     terminal_manager._terminal_manager = None
 
     yield
 
-    # 清理新创建的管理器
+    # Clean up newly created managers
     try:
         if serial_manager._serial_manager is not None:
             serial_manager._serial_manager.shutdown()
@@ -189,6 +192,6 @@ def reset_managers():
     except Exception:
         pass
 
-    # 恢复原状态
+    # Restore the original state
     serial_manager._serial_manager = old_serial
     terminal_manager._terminal_manager = old_terminal

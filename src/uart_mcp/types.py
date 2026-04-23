@@ -1,6 +1,6 @@
-"""类型定义模块
+"""Type definitions module.
 
-定义串口配置和状态相关的数据类型。
+Defines data types related to serial port configuration and status.
 """
 
 from dataclasses import dataclass
@@ -8,7 +8,7 @@ from enum import Enum
 
 
 class Parity(str, Enum):
-    """校验位枚举"""
+    """Parity bit enumeration."""
 
     NONE = "N"
     EVEN = "E"
@@ -18,7 +18,7 @@ class Parity(str, Enum):
 
 
 class StopBits(float, Enum):
-    """停止位枚举"""
+    """Stop bits enumeration."""
 
     ONE = 1
     ONE_POINT_FIVE = 1.5
@@ -26,7 +26,7 @@ class StopBits(float, Enum):
 
 
 class FlowControl(str, Enum):
-    """流控制枚举"""
+    """Flow control enumeration."""
 
     NONE = "none"
     HARDWARE = "hardware"  # RTS/CTS
@@ -34,14 +34,14 @@ class FlowControl(str, Enum):
 
 
 class LineEnding(str, Enum):
-    """终端换行符枚举"""
+    """Terminal line ending enumeration."""
 
     CR = "\r"  # Carriage Return
     LF = "\n"  # Line Feed
     CRLF = "\r\n"  # Carriage Return + Line Feed
 
 
-# 支持的波特率列表
+# Supported baud rates
 SUPPORTED_BAUDRATES: tuple[int, ...] = (
     300,
     600,
@@ -59,10 +59,10 @@ SUPPORTED_BAUDRATES: tuple[int, ...] = (
     921600,
 )
 
-# 支持的数据位
+# Supported data bits
 SUPPORTED_BYTESIZES: tuple[int, ...] = (5, 6, 7, 8)
 
-# 默认配置值
+# Default configuration values
 DEFAULT_BAUDRATE = 115200
 DEFAULT_BYTESIZE = 8
 DEFAULT_PARITY = Parity.NONE
@@ -72,7 +72,7 @@ DEFAULT_TIMEOUT_MS = 1000
 DEFAULT_WRITE_TIMEOUT_MS = 1000
 DEFAULT_CONNECT_TIMEOUT_MS = 5000
 
-# 终端会话默认配置
+# Default configuration for terminal sessions
 DEFAULT_LINE_ENDING = LineEnding.CRLF
 DEFAULT_BUFFER_SIZE = 65536  # 64KB
 DEFAULT_LOCAL_ECHO = False
@@ -80,16 +80,16 @@ DEFAULT_LOCAL_ECHO = False
 
 @dataclass
 class SerialConfig:
-    """串口配置
+    """Serial port configuration.
 
     Attributes:
-        baudrate: 波特率
-        bytesize: 数据位
-        parity: 校验位
-        stopbits: 停止位
-        flow_control: 流控制
-        read_timeout_ms: 读取超时（毫秒）
-        write_timeout_ms: 写入超时（毫秒）
+        baudrate: Baud rate.
+        bytesize: Data bits.
+        parity: Parity bit.
+        stopbits: Stop bits.
+        flow_control: Flow control.
+        read_timeout_ms: Read timeout (milliseconds).
+        write_timeout_ms: Write timeout (milliseconds).
     """
 
     baudrate: int = DEFAULT_BAUDRATE
@@ -101,7 +101,7 @@ class SerialConfig:
     write_timeout_ms: int = DEFAULT_WRITE_TIMEOUT_MS
 
     def to_dict(self) -> dict[str, int | str | float]:
-        """转换为字典格式"""
+        """Convert to dictionary form."""
         return {
             "baudrate": self.baudrate,
             "bytesize": self.bytesize,
@@ -115,12 +115,12 @@ class SerialConfig:
 
 @dataclass
 class PortInfo:
-    """串口信息
+    """Serial port information.
 
     Attributes:
-        port: 串口路径（如 /dev/ttyUSB0 或 COM1）
-        description: 串口描述
-        hwid: 硬件ID
+        port: Serial port path (e.g., /dev/ttyUSB0 or COM1).
+        description: Serial port description.
+        hwid: Hardware ID.
     """
 
     port: str
@@ -128,7 +128,7 @@ class PortInfo:
     hwid: str
 
     def to_dict(self) -> dict[str, str]:
-        """转换为字典格式"""
+        """Convert to dictionary form."""
         return {
             "port": self.port,
             "description": self.description,
@@ -138,14 +138,14 @@ class PortInfo:
 
 @dataclass
 class PortStatus:
-    """串口状态
+    """Serial port status.
 
     Attributes:
-        port: 串口路径
-        is_open: 是否已打开
-        config: 当前配置
-        connected: 物理连接状态
-        reconnecting: 是否正在重连
+        port: Serial port path.
+        is_open: Whether the port is open.
+        config: Current configuration.
+        connected: Physical connection state.
+        reconnecting: Whether a reconnect is in progress.
     """
 
     port: str
@@ -155,7 +155,7 @@ class PortStatus:
     reconnecting: bool = False
 
     def to_dict(self) -> dict[str, str | bool | dict[str, int | str | float] | None]:
-        """转换为字典格式"""
+        """Convert to dictionary form."""
         return {
             "port": self.port,
             "is_open": self.is_open,
@@ -167,12 +167,12 @@ class PortStatus:
 
 @dataclass
 class TerminalConfig:
-    """终端会话配置
+    """Terminal session configuration.
 
     Attributes:
-        line_ending: 换行符类型
-        local_echo: 是否本地回显
-        buffer_size: 输出缓冲区大小（字节）
+        line_ending: Line-ending type.
+        local_echo: Whether to locally echo sent input.
+        buffer_size: Output buffer size (bytes).
     """
 
     line_ending: LineEnding = DEFAULT_LINE_ENDING
@@ -180,7 +180,7 @@ class TerminalConfig:
     buffer_size: int = DEFAULT_BUFFER_SIZE
 
     def to_dict(self) -> dict[str, str | bool | int]:
-        """转换为字典格式"""
+        """Convert to dictionary form."""
         return {
             "line_ending": self.line_ending.name,
             "local_echo": self.local_echo,
@@ -190,15 +190,15 @@ class TerminalConfig:
 
 @dataclass
 class SessionInfo:
-    """终端会话信息
+    """Terminal session information.
 
     Attributes:
-        session_id: 会话ID（即串口路径）
-        port: 串口路径
-        config: 终端配置
-        buffer_size: 当前缓冲区数据量（字节）
-        is_active: 会话是否活跃
-        created_at: 创建时间戳
+        session_id: Session ID (equal to the serial port path).
+        port: Serial port path.
+        config: Terminal configuration.
+        buffer_size: Amount of data currently buffered (bytes).
+        is_active: Whether the session is active.
+        created_at: Creation timestamp.
     """
 
     session_id: str
@@ -209,7 +209,7 @@ class SessionInfo:
     created_at: float
 
     def to_dict(self) -> dict[str, object]:
-        """转换为字典格式"""
+        """Convert to dictionary form."""
         return {
             "session_id": self.session_id,
             "port": self.port,

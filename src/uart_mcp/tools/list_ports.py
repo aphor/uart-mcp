@@ -1,6 +1,6 @@
-"""list_ports 工具实现
+"""list_ports tool implementation.
 
-提供枚举系统所有可用串口设备的功能。
+Enumerates every serial port device available on the system.
 """
 
 from typing import Any
@@ -9,22 +9,26 @@ from ..serial_manager import get_serial_manager
 
 
 def list_ports() -> list[dict[str, str]]:
-    """列出所有可用串口设备
+    """List all available serial port devices.
 
-    返回系统中所有可用的串口设备列表，已过滤黑名单中的串口。
+    Returns every serial port device available on the system, filtered by
+    the blacklist.
 
     Returns:
-        串口信息列表，每个元素包含 port、description、hwid 字段
+        List of serial port info dicts, each with port, description, and hwid fields.
     """
     manager = get_serial_manager()
     ports = manager.list_ports()
     return [p.to_dict() for p in ports]
 
 
-# 工具定义（用于 MCP 注册）
+# Tool definition (used for MCP registration)
 LIST_PORTS_TOOL: dict[str, Any] = {
     "name": "list_ports",
-    "description": "列出所有可用串口设备，返回设备路径、描述信息和硬件ID",
+    "description": (
+        "List all available serial port devices. Returns the device path, "
+        "description, and hardware ID for each."
+    ),
     "inputSchema": {
         "type": "object",
         "properties": {},

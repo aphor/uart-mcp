@@ -1,6 +1,6 @@
-"""MCP Server 实现
+"""MCP Server implementation.
 
-提供 UART MCP Server 的主服务器逻辑。
+Provides the main server logic for the UART MCP Server.
 """
 
 import asyncio
@@ -49,20 +49,20 @@ from .tools.terminal import (
     send_command,
 )
 
-# 配置日志
+# Configure logging
 logging.basicConfig(
     level=logging.INFO,
     format="%(asctime)s - %(name)s - %(levelname)s - %(message)s",
 )
 logger = logging.getLogger(__name__)
 
-# 创建 MCP Server
+# Create the MCP server
 server = Server("uart-mcp")
 
 
 @server.list_tools()  # type: ignore[no-untyped-call, untyped-decorator]
 async def handle_list_tools() -> list[types.Tool]:
-    """返回可用工具列表"""
+    """Return the list of available tools."""
     return [
         types.Tool(
             name=LIST_PORTS_TOOL["name"],
@@ -99,7 +99,7 @@ async def handle_list_tools() -> list[types.Tool]:
             description=READ_DATA_TOOL["description"],
             inputSchema=READ_DATA_TOOL["inputSchema"],
         ),
-        # 终端会话工具
+        # Terminal session tools
         types.Tool(
             name=CREATE_SESSION_TOOL["name"],
             description=CREATE_SESSION_TOOL["description"],
@@ -142,7 +142,7 @@ async def handle_list_tools() -> list[types.Tool]:
 async def handle_call_tool(
     name: str, arguments: dict[str, Any]
 ) -> list[types.TextContent]:
-    """处理工具调用"""
+    """Handle a tool call."""
     try:
         result: Any
         if name == "list_ports":
@@ -159,7 +159,7 @@ async def handle_call_tool(
             result = send_data(**arguments)
         elif name == "read_data":
             result = read_data(**arguments)
-        # 终端会话工具
+        # Terminal session tools
         elif name == "create_session":
             result = create_session(**arguments)
         elif name == "close_session":
@@ -175,33 +175,33 @@ async def handle_call_tool(
         elif name == "clear_buffer":
             result = clear_buffer(**arguments)
         else:
-            raise ValueError(f"未知工具：{name}")
+            raise ValueError(f"Unknown tool: {name}")
 
-        # 返回 JSON 格式结果
+        # Return the result as JSON
         import json
 
         text = json.dumps(result, ensure_ascii=False)
         return [types.TextContent(type="text", text=text)]
 
     except SerialError as e:
-        # 串口错误，返回错误信息
+        # Serial port error: return the error information
         import json
 
         text = json.dumps(e.to_dict(), ensure_ascii=False)
         return [types.TextContent(type="text", text=text)]
 
     except Exception as e:
-        # 其他错误
+        # Other errors
         import json
 
-        error_response = {"error": {"code": -1, "message": f"内部错误：{e!s}"}}
+        error_response = {"error": {"code": -1, "message": f"Internal error: {e!s}"}}
         text = json.dumps(error_response, ensure_ascii=False)
         return [types.TextContent(type="text", text=text)]
 
 
 async def run_server() -> None:
-    """运行 MCP 服务器"""
-    logger.info("启动 UART MCP Server...")
+    """Run the MCP server."""
+    logger.info("Starting UART MCP Server...")
 
     async with mcp.server.stdio.stdio_server() as (read_stream, write_stream):
         await server.run(
@@ -219,19 +219,19 @@ async def run_server() -> None:
 
 
 def main() -> None:
-    """主入口函数"""
+    """Main entry point."""
     try:
         asyncio.run(run_server())
     except KeyboardInterrupt:
-        logger.info("收到中断信号，正在关闭...")
+        logger.info("Received interrupt signal, shutting down...")
     finally:
-        # 关闭终端管理器
+        # Shut down the terminal manager
         terminal_mgr = get_terminal_manager()
         terminal_mgr.shutdown()
-        # 关闭串口管理器
+        # Shut down the serial port manager
         serial_mgr = get_serial_manager()
         serial_mgr.shutdown()
-        logger.info("UART MCP Server 已关闭")
+        logger.info("UART MCP Server shut down")
 
 
 if __name__ == "__main__":

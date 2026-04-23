@@ -1,6 +1,6 @@
-"""终端会话工具实现
+"""Terminal session tool implementation.
 
-提供终端会话的创建、管理和数据收发功能。
+Provides creation, management, and data send/receive for terminal sessions.
 """
 
 from typing import Any
@@ -15,16 +15,16 @@ def create_session(
     local_echo: bool = DEFAULT_LOCAL_ECHO,
     buffer_size: int = DEFAULT_BUFFER_SIZE,
 ) -> dict[str, Any]:
-    """在已打开串口上创建终端会话
+    """Create a terminal session on an already-open serial port.
 
     Args:
-        port: 串口路径
-        line_ending: 换行符类型（CR/LF/CRLF）
-        local_echo: 是否本地回显
-        buffer_size: 输出缓冲区大小
+        port: Serial port path.
+        line_ending: Line-ending type (CR/LF/CRLF).
+        local_echo: Whether to locally echo input.
+        buffer_size: Output buffer size.
 
     Returns:
-        会话信息
+        Session information.
     """
     manager = get_terminal_manager()
     session_info = manager.create_session(
@@ -37,13 +37,13 @@ def create_session(
 
 
 def close_session(session_id: str) -> dict[str, Any]:
-    """关闭指定终端会话
+    """Close the specified terminal session.
 
     Args:
-        session_id: 会话ID（串口路径）
+        session_id: Session ID (serial port path).
 
     Returns:
-        操作结果
+        Operation result.
     """
     manager = get_terminal_manager()
     return manager.close_session(session_id)
@@ -54,15 +54,15 @@ def send_command(
     command: str,
     add_line_ending: bool = True,
 ) -> dict[str, Any]:
-    """向终端发送命令
+    """Send a command to a terminal.
 
     Args:
-        session_id: 会话ID（串口路径）
-        command: 要发送的命令
-        add_line_ending: 是否自动添加换行符
+        session_id: Session ID (serial port path).
+        command: Command to send.
+        add_line_ending: Whether to automatically append the line ending.
 
     Returns:
-        发送结果
+        Send result.
     """
     manager = get_terminal_manager()
     return manager.send_command(
@@ -76,24 +76,24 @@ def read_output(
     session_id: str,
     clear: bool = True,
 ) -> dict[str, Any]:
-    """读取终端输出缓冲区内容
+    """Read the contents of the terminal output buffer.
 
     Args:
-        session_id: 会话ID（串口路径）
-        clear: 是否清空缓冲区
+        session_id: Session ID (serial port path).
+        clear: Whether to clear the buffer after reading.
 
     Returns:
-        输出内容
+        Output content.
     """
     manager = get_terminal_manager()
     return manager.read_output(session_id=session_id, clear=clear)
 
 
 def list_sessions() -> dict[str, Any]:
-    """列出所有活动会话
+    """List all active sessions.
 
     Returns:
-        会话列表
+        Session list.
     """
     manager = get_terminal_manager()
     sessions = manager.list_sessions()
@@ -101,57 +101,63 @@ def list_sessions() -> dict[str, Any]:
 
 
 def get_session_info(session_id: str) -> dict[str, Any]:
-    """获取会话详细信息
+    """Return detailed session information.
 
     Args:
-        session_id: 会话ID（串口路径）
+        session_id: Session ID (serial port path).
 
     Returns:
-        会话信息
+        Session information.
     """
     manager = get_terminal_manager()
     return manager.get_session_info(session_id)
 
 
 def clear_buffer(session_id: str) -> dict[str, Any]:
-    """清空会话输出缓冲区
+    """Clear the session's output buffer.
 
     Args:
-        session_id: 会话ID（串口路径）
+        session_id: Session ID (serial port path).
 
     Returns:
-        操作结果
+        Operation result.
     """
     manager = get_terminal_manager()
     return manager.clear_buffer(session_id)
 
 
-# 工具定义（用于 MCP 注册）
+# Tool definitions (used for MCP registration)
 
 CREATE_SESSION_TOOL: dict[str, Any] = {
     "name": "create_session",
-    "description": "在已打开串口上创建终端会话，支持配置换行符和本地回显",
+    "description": (
+        "Create a terminal session on an open serial port. Supports configurable "
+        "line ending and local echo."
+    ),
     "inputSchema": {
         "type": "object",
         "properties": {
             "port": {
                 "type": "string",
-                "description": "串口路径，如 /dev/ttyUSB0 或 COM1",
+                "description": "Serial port path, e.g. /dev/ttyUSB0 or COM1",
             },
             "line_ending": {
                 "type": "string",
-                "description": "换行符类型：CR（回车）、LF（换行）、CRLF（回车换行）",
+                "description": (
+                    "Line-ending type: CR (carriage return), LF (line feed), or "
+                    "CRLF (carriage return + line feed)."
+                ),
                 "enum": ["CR", "LF", "CRLF"],
                 "default": "CRLF",
             },
             "local_echo": {
                 "type": "boolean",
-                "description": "是否本地回显发送的命令",
+                "description": "Whether to locally echo the commands that are sent.",
                 "default": False,
             },
             "buffer_size": {
                 "type": "integer",
-                "description": "输出缓冲区大小（字节），默认 64KB",
+                "description": "Output buffer size in bytes. Default 64KB.",
                 "default": DEFAULT_BUFFER_SIZE,
             },
         },
@@ -161,13 +167,15 @@ CREATE_SESSION_TOOL: dict[str, Any] = {
 
 CLOSE_SESSION_TOOL: dict[str, Any] = {
     "name": "close_session",
-    "description": "关闭指定的终端会话",
+    "description": "Close the specified terminal session.",
     "inputSchema": {
         "type": "object",
         "properties": {
             "session_id": {
                 "type": "string",
-                "description": "会话ID（即串口路径），如 /dev/ttyUSB0 或 COM1",
+                "description": (
+                    "Session ID (the serial port path), e.g. /dev/ttyUSB0 or COM1"
+                ),
             },
         },
         "required": ["session_id"],
@@ -176,21 +184,25 @@ CLOSE_SESSION_TOOL: dict[str, Any] = {
 
 SEND_COMMAND_TOOL: dict[str, Any] = {
     "name": "send_command",
-    "description": "向终端发送命令，可选择是否自动添加换行符",
+    "description": (
+        "Send a command to a terminal, optionally appending a line ending."
+    ),
     "inputSchema": {
         "type": "object",
         "properties": {
             "session_id": {
                 "type": "string",
-                "description": "会话ID（即串口路径），如 /dev/ttyUSB0 或 COM1",
+                "description": (
+                    "Session ID (the serial port path), e.g. /dev/ttyUSB0 or COM1"
+                ),
             },
             "command": {
                 "type": "string",
-                "description": "要发送的命令内容",
+                "description": "Command content to send",
             },
             "add_line_ending": {
                 "type": "boolean",
-                "description": "是否自动添加换行符",
+                "description": "Whether to automatically append the line ending.",
                 "default": True,
             },
         },
@@ -200,17 +212,19 @@ SEND_COMMAND_TOOL: dict[str, Any] = {
 
 READ_OUTPUT_TOOL: dict[str, Any] = {
     "name": "read_output",
-    "description": "读取终端输出缓冲区的内容",
+    "description": "Read the contents of the terminal output buffer.",
     "inputSchema": {
         "type": "object",
         "properties": {
             "session_id": {
                 "type": "string",
-                "description": "会话ID（即串口路径），如 /dev/ttyUSB0 或 COM1",
+                "description": (
+                    "Session ID (the serial port path), e.g. /dev/ttyUSB0 or COM1"
+                ),
             },
             "clear": {
                 "type": "boolean",
-                "description": "读取后是否清空缓冲区",
+                "description": "Whether to clear the buffer after reading.",
                 "default": True,
             },
         },
@@ -220,7 +234,7 @@ READ_OUTPUT_TOOL: dict[str, Any] = {
 
 LIST_SESSIONS_TOOL: dict[str, Any] = {
     "name": "list_sessions",
-    "description": "列出所有活动的终端会话",
+    "description": "List all active terminal sessions.",
     "inputSchema": {
         "type": "object",
         "properties": {},
@@ -230,13 +244,15 @@ LIST_SESSIONS_TOOL: dict[str, Any] = {
 
 GET_SESSION_INFO_TOOL: dict[str, Any] = {
     "name": "get_session_info",
-    "description": "获取指定终端会话的详细信息",
+    "description": "Return detailed information for the specified terminal session.",
     "inputSchema": {
         "type": "object",
         "properties": {
             "session_id": {
                 "type": "string",
-                "description": "会话ID（即串口路径），如 /dev/ttyUSB0 或 COM1",
+                "description": (
+                    "Session ID (the serial port path), e.g. /dev/ttyUSB0 or COM1"
+                ),
             },
         },
         "required": ["session_id"],
@@ -245,13 +261,15 @@ GET_SESSION_INFO_TOOL: dict[str, Any] = {
 
 CLEAR_BUFFER_TOOL: dict[str, Any] = {
     "name": "clear_buffer",
-    "description": "清空指定终端会话的输出缓冲区",
+    "description": "Clear the output buffer of the specified terminal session.",
     "inputSchema": {
         "type": "object",
         "properties": {
             "session_id": {
                 "type": "string",
-                "description": "会话ID（即串口路径），如 /dev/ttyUSB0 或 COM1",
+                "description": (
+                    "Session ID (the serial port path), e.g. /dev/ttyUSB0 or COM1"
+                ),
             },
         },
         "required": ["session_id"],

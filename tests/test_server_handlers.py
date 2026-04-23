@@ -1,6 +1,6 @@
-"""server.py 的 handler 函数测试
+"""Tests for server.py handler functions.
 
-覆盖 handle_list_tools 和 handle_call_tool 函数。
+Covers handle_list_tools and handle_call_tool.
 """
 
 import json
@@ -10,34 +10,34 @@ import pytest
 
 
 class TestHandleListTools:
-    """测试 handle_list_tools 函数"""
+    """Tests for handle_list_tools."""
 
     @pytest.mark.asyncio
     async def test_handle_list_tools_returns_all_tools(self):
-        """测试：handle_list_tools 返回所有工具"""
+        """Test that handle_list_tools returns all tools."""
         from uart_mcp.server import handle_list_tools
 
         tools = await handle_list_tools()
 
-        # 验证返回工具列表
+        # Verify the returned tool list
         assert isinstance(tools, list)
-        assert len(tools) == 14  # 总共14个工具
+        assert len(tools) == 14  # 14 tools total
 
-        # 验证每个工具都有必要的属性
+        # Verify each tool has the required attributes
         tool_names = [tool.name for tool in tools]
 
-        # 串口基础工具
+        # Basic serial-port tools
         assert "list_ports" in tool_names
         assert "open_port" in tool_names
         assert "close_port" in tool_names
         assert "set_config" in tool_names
         assert "get_status" in tool_names
 
-        # 数据操作工具
+        # Data I/O tools
         assert "send_data" in tool_names
         assert "read_data" in tool_names
 
-        # 终端会话工具
+        # Terminal session tools
         assert "create_session" in tool_names
         assert "close_session" in tool_names
         assert "send_command" in tool_names
@@ -48,11 +48,11 @@ class TestHandleListTools:
 
 
 class TestHandleCallTool:
-    """测试 handle_call_tool 函数"""
+    """Tests for handle_call_tool."""
 
     @pytest.mark.asyncio
     async def test_call_list_ports(self, mock_list_ports_with_devices, reset_managers):
-        """测试：调用 list_ports 工具"""
+        """Test calling the list_ports tool."""
         from uart_mcp.server import handle_call_tool
 
         result = await handle_call_tool("list_ports", {})
@@ -66,7 +66,7 @@ class TestHandleCallTool:
 
     @pytest.mark.asyncio
     async def test_call_open_port(self, mock_serial_loopback, mock_list_ports_with_devices, reset_managers):
-        """测试：调用 open_port 工具"""
+        """Test calling the open_port tool."""
         from uart_mcp.server import handle_call_tool
 
         result = await handle_call_tool("open_port", {
@@ -80,10 +80,10 @@ class TestHandleCallTool:
 
     @pytest.mark.asyncio
     async def test_call_get_status(self, mock_serial_loopback, mock_list_ports_with_devices, reset_managers):
-        """测试：调用 get_status 工具"""
+        """Test calling the get_status tool."""
         from uart_mcp.server import handle_call_tool
 
-        # 先打开串口
+        # Open the port first
         await handle_call_tool("open_port", {"port": "/dev/ttyMOCK0", "baudrate": 115200})
 
         result = await handle_call_tool("get_status", {"port": "/dev/ttyMOCK0"})
@@ -94,10 +94,10 @@ class TestHandleCallTool:
 
     @pytest.mark.asyncio
     async def test_call_set_config(self, mock_serial_loopback, mock_list_ports_with_devices, reset_managers):
-        """测试：调用 set_config 工具"""
+        """Test calling the set_config tool."""
         from uart_mcp.server import handle_call_tool
 
-        # 先打开串口
+        # Open the port first
         await handle_call_tool("open_port", {"port": "/dev/ttyMOCK0", "baudrate": 115200})
 
         result = await handle_call_tool("set_config", {
@@ -111,10 +111,10 @@ class TestHandleCallTool:
 
     @pytest.mark.asyncio
     async def test_call_send_data(self, mock_serial_loopback, mock_list_ports_with_devices, reset_managers):
-        """测试：调用 send_data 工具"""
+        """Test calling the send_data tool."""
         from uart_mcp.server import handle_call_tool
 
-        # 先打开串口
+        # Open the port first
         await handle_call_tool("open_port", {"port": "/dev/ttyMOCK0", "baudrate": 115200})
 
         result = await handle_call_tool("send_data", {
@@ -129,10 +129,10 @@ class TestHandleCallTool:
 
     @pytest.mark.asyncio
     async def test_call_read_data(self, mock_serial_loopback, mock_list_ports_with_devices, reset_managers):
-        """测试：调用 read_data 工具"""
+        """Test calling the read_data tool."""
         from uart_mcp.server import handle_call_tool
 
-        # 先打开串口并发送数据
+        # Open the port and send data first
         await handle_call_tool("open_port", {"port": "/dev/ttyMOCK0", "baudrate": 115200})
         await handle_call_tool("send_data", {"port": "/dev/ttyMOCK0", "data": "Test", "is_binary": False})
 
@@ -147,10 +147,10 @@ class TestHandleCallTool:
 
     @pytest.mark.asyncio
     async def test_call_close_port(self, mock_serial_loopback, mock_list_ports_with_devices, reset_managers):
-        """测试：调用 close_port 工具"""
+        """Test calling the close_port tool."""
         from uart_mcp.server import handle_call_tool
 
-        # 先打开串口
+        # Open the port first
         await handle_call_tool("open_port", {"port": "/dev/ttyMOCK0", "baudrate": 115200})
 
         result = await handle_call_tool("close_port", {"port": "/dev/ttyMOCK0"})
@@ -159,14 +159,14 @@ class TestHandleCallTool:
         data = json.loads(result[0].text)
         assert data.get("success") is True
 
-    # ========== 终端会话工具测试 ==========
+    # ========== Terminal session tool tests ==========
 
     @pytest.mark.asyncio
     async def test_call_create_session(self, mock_serial_loopback, mock_list_ports_with_devices, reset_managers):
-        """测试：调用 create_session 工具"""
+        """Test calling the create_session tool."""
         from uart_mcp.server import handle_call_tool
 
-        # 先打开串口
+        # Open the port first
         await handle_call_tool("open_port", {"port": "/dev/ttyMOCK0", "baudrate": 115200})
 
         result = await handle_call_tool("create_session", {"port": "/dev/ttyMOCK0"})
@@ -177,10 +177,10 @@ class TestHandleCallTool:
 
     @pytest.mark.asyncio
     async def test_call_list_sessions(self, mock_serial_loopback, mock_list_ports_with_devices, reset_managers):
-        """测试：调用 list_sessions 工具"""
+        """Test calling the list_sessions tool."""
         from uart_mcp.server import handle_call_tool
 
-        # 先打开串口并创建会话
+        # Open the port and create a session first
         await handle_call_tool("open_port", {"port": "/dev/ttyMOCK0", "baudrate": 115200})
         await handle_call_tool("create_session", {"port": "/dev/ttyMOCK0"})
 
@@ -192,10 +192,10 @@ class TestHandleCallTool:
 
     @pytest.mark.asyncio
     async def test_call_get_session_info(self, mock_serial_loopback, mock_list_ports_with_devices, reset_managers):
-        """测试：调用 get_session_info 工具"""
+        """Test calling the get_session_info tool."""
         from uart_mcp.server import handle_call_tool
 
-        # 先打开串口并创建会话
+        # Open the port and create a session first
         await handle_call_tool("open_port", {"port": "/dev/ttyMOCK0", "baudrate": 115200})
         await handle_call_tool("create_session", {"port": "/dev/ttyMOCK0"})
 
@@ -207,10 +207,10 @@ class TestHandleCallTool:
 
     @pytest.mark.asyncio
     async def test_call_send_command(self, mock_serial_loopback, mock_list_ports_with_devices, reset_managers):
-        """测试：调用 send_command 工具"""
+        """Test calling the send_command tool."""
         from uart_mcp.server import handle_call_tool
 
-        # 先打开串口并创建会话
+        # Open the port and create a session first
         await handle_call_tool("open_port", {"port": "/dev/ttyMOCK0", "baudrate": 115200})
         await handle_call_tool("create_session", {"port": "/dev/ttyMOCK0"})
 
@@ -225,10 +225,10 @@ class TestHandleCallTool:
 
     @pytest.mark.asyncio
     async def test_call_read_output(self, mock_serial_loopback, mock_list_ports_with_devices, reset_managers):
-        """测试：调用 read_output 工具"""
+        """Test calling the read_output tool."""
         from uart_mcp.server import handle_call_tool
 
-        # 先打开串口并创建会话
+        # Open the port and create a session first
         await handle_call_tool("open_port", {"port": "/dev/ttyMOCK0", "baudrate": 115200})
         await handle_call_tool("create_session", {"port": "/dev/ttyMOCK0"})
 
@@ -240,10 +240,10 @@ class TestHandleCallTool:
 
     @pytest.mark.asyncio
     async def test_call_clear_buffer(self, mock_serial_loopback, mock_list_ports_with_devices, reset_managers):
-        """测试：调用 clear_buffer 工具"""
+        """Test calling the clear_buffer tool."""
         from uart_mcp.server import handle_call_tool
 
-        # 先打开串口并创建会话
+        # Open the port and create a session first
         await handle_call_tool("open_port", {"port": "/dev/ttyMOCK0", "baudrate": 115200})
         await handle_call_tool("create_session", {"port": "/dev/ttyMOCK0"})
 
@@ -255,10 +255,10 @@ class TestHandleCallTool:
 
     @pytest.mark.asyncio
     async def test_call_close_session(self, mock_serial_loopback, mock_list_ports_with_devices, reset_managers):
-        """测试：调用 close_session 工具"""
+        """Test calling the close_session tool."""
         from uart_mcp.server import handle_call_tool
 
-        # 先打开串口并创建会话
+        # Open the port and create a session first
         await handle_call_tool("open_port", {"port": "/dev/ttyMOCK0", "baudrate": 115200})
         await handle_call_tool("create_session", {"port": "/dev/ttyMOCK0"})
 
@@ -268,11 +268,11 @@ class TestHandleCallTool:
         data = json.loads(result[0].text)
         assert data.get("success") is True
 
-    # ========== 错误处理测试 ==========
+    # ========== Error-handling tests ==========
 
     @pytest.mark.asyncio
     async def test_call_unknown_tool(self, reset_managers):
-        """测试：调用未知工具返回错误"""
+        """Test that calling an unknown tool returns an error."""
         from uart_mcp.server import handle_call_tool
 
         result = await handle_call_tool("unknown_tool", {})
@@ -280,14 +280,14 @@ class TestHandleCallTool:
         assert len(result) == 1
         data = json.loads(result[0].text)
         assert "error" in data
-        assert "未知工具" in data["error"]["message"]
+        assert "Unknown tool" in data["error"]["message"]
 
     @pytest.mark.asyncio
     async def test_serial_error_handling(self, reset_managers):
-        """测试：SerialError 异常处理"""
+        """Test SerialError handling."""
         from uart_mcp.server import handle_call_tool
 
-        # 尝试获取未打开端口的状态，应该触发 SerialError
+        # Fetching the status of an unopened port should raise SerialError
         result = await handle_call_tool("get_status", {"port": "/dev/ttyNONEXIST"})
 
         assert len(result) == 1
@@ -297,28 +297,28 @@ class TestHandleCallTool:
 
     @pytest.mark.asyncio
     async def test_general_exception_handling(self, reset_managers):
-        """测试：普通异常处理"""
+        """Test handling of a generic exception."""
         from uart_mcp.server import handle_call_tool
 
-        # 使用 patch 正确的模块路径来触发普通异常
-        with patch("uart_mcp.server.list_ports", side_effect=RuntimeError("测试异常")):
+        # Patch the correct module path to trigger a generic exception
+        with patch("uart_mcp.server.list_ports", side_effect=RuntimeError("test exception")):
             result = await handle_call_tool("list_ports", {})
 
         assert len(result) == 1
         data = json.loads(result[0].text)
         assert "error" in data
-        assert "内部错误" in data["error"]["message"]
+        assert "Internal error" in data["error"]["message"]
 
 
 class TestMainAndRunServer:
-    """测试 main() 和 run_server() 函数"""
+    """Tests for main() and run_server()."""
 
     @pytest.mark.asyncio
     async def test_run_server_starts_correctly(self):
-        """测试：run_server 启动并立即退出"""
+        """Test that run_server starts and exits immediately."""
         from uart_mcp.server import run_server
 
-        # Mock stdio_server 上下文管理器，让它立即返回
+        # Mock the stdio_server context manager so it returns immediately
         mock_read_stream = AsyncMock()
         mock_write_stream = AsyncMock()
 
@@ -344,11 +344,11 @@ class TestMainAndRunServer:
                 mock_run.assert_called_once()
 
     def test_main_normal_exit(self):
-        """测试：main 正常启动和退出"""
+        """Test that main starts and exits normally."""
         from uart_mcp.server import main
 
         def mock_asyncio_run_impl(coro):
-            # 关闭协程以避免警告
+            # Close the coroutine to avoid a warning
             coro.close()
 
         with patch(
@@ -369,11 +369,11 @@ class TestMainAndRunServer:
                     mock_serial_instance.shutdown.assert_called_once()
 
     def test_main_keyboard_interrupt(self):
-        """测试：main 处理 KeyboardInterrupt"""
+        """Test that main handles KeyboardInterrupt."""
         from uart_mcp.server import main
 
         def mock_asyncio_run_impl(coro):
-            # 关闭协程以避免警告
+            # Close the coroutine to avoid a warning
             coro.close()
             raise KeyboardInterrupt
 
@@ -385,10 +385,9 @@ class TestMainAndRunServer:
                     mock_term_mgr.return_value = mock_term_instance
                     mock_serial_mgr.return_value = mock_serial_instance
 
-                    # 不应该抛出异常
+                    # Should not raise
                     main()
 
-                    # 确保清理仍然执行
+                    # Ensure cleanup still runs
                     mock_term_instance.shutdown.assert_called_once()
                     mock_serial_instance.shutdown.assert_called_once()
-

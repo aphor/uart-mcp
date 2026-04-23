@@ -1,4 +1,4 @@
-"""终端工具测试"""
+"""Tests for terminal tools."""
 
 from unittest.mock import MagicMock, patch
 
@@ -17,16 +17,16 @@ from uart_mcp.tools.terminal import (
 
 @pytest.fixture
 def mock_terminal_manager():
-    """模拟终端管理器"""
+    """Mock the terminal manager."""
     with patch("uart_mcp.tools.terminal.get_terminal_manager") as mock:
         yield mock
 
 
 class TestCreateSession:
-    """测试 create_session 工具"""
+    """Tests for the create_session tool."""
 
     def test_create_session_success(self, mock_terminal_manager):
-        """测试成功创建会话"""
+        """Test creating a session successfully."""
         mock_info = MagicMock()
         mock_info.to_dict.return_value = {
             "session_id": "/dev/ttyUSB0",
@@ -46,7 +46,7 @@ class TestCreateSession:
         )
 
     def test_create_session_with_options(self, mock_terminal_manager):
-        """测试带选项创建会话"""
+        """Test creating a session with custom options."""
         mock_info = MagicMock()
         mock_info.to_dict.return_value = {"session_id": "/dev/ttyUSB0"}
         mock_terminal_manager.return_value.create_session.return_value = mock_info
@@ -67,10 +67,10 @@ class TestCreateSession:
 
 
 class TestCloseSession:
-    """测试 close_session 工具"""
+    """Tests for the close_session tool."""
 
     def test_close_session_success(self, mock_terminal_manager):
-        """测试成功关闭会话"""
+        """Test closing a session successfully."""
         mock_terminal_manager.return_value.close_session.return_value = {
             "success": True,
             "session_id": "/dev/ttyUSB0",
@@ -85,10 +85,10 @@ class TestCloseSession:
 
 
 class TestSendCommand:
-    """测试 send_command 工具"""
+    """Tests for the send_command tool."""
 
     def test_send_command_success(self, mock_terminal_manager):
-        """测试成功发送命令"""
+        """Test sending a command successfully."""
         mock_terminal_manager.return_value.send_command.return_value = {
             "success": True,
             "bytes_written": 10,
@@ -105,7 +105,7 @@ class TestSendCommand:
         )
 
     def test_send_command_without_line_ending(self, mock_terminal_manager):
-        """测试发送命令（不带换行符）"""
+        """Test sending a command without a line ending."""
         mock_terminal_manager.return_value.send_command.return_value = {
             "success": True,
             "bytes_written": 6,
@@ -125,10 +125,10 @@ class TestSendCommand:
 
 
 class TestReadOutput:
-    """测试 read_output 工具"""
+    """Tests for the read_output tool."""
 
     def test_read_output_success(self, mock_terminal_manager):
-        """测试成功读取输出"""
+        """Test reading output successfully."""
         mock_terminal_manager.return_value.read_output.return_value = {
             "data": "test output\n",
             "bytes_read": 12,
@@ -144,7 +144,7 @@ class TestReadOutput:
         )
 
     def test_read_output_without_clear(self, mock_terminal_manager):
-        """测试读取输出（不清空）"""
+        """Test reading output without clearing the buffer."""
         mock_terminal_manager.return_value.read_output.return_value = {
             "data": "test",
             "bytes_read": 4,
@@ -159,10 +159,10 @@ class TestReadOutput:
 
 
 class TestListSessions:
-    """测试 list_sessions 工具"""
+    """Tests for the list_sessions tool."""
 
     def test_list_sessions_empty(self, mock_terminal_manager):
-        """测试空会话列表"""
+        """Test an empty session list."""
         mock_terminal_manager.return_value.list_sessions.return_value = []
 
         result = list_sessions()
@@ -171,7 +171,7 @@ class TestListSessions:
         assert result["count"] == 0
 
     def test_list_sessions_with_data(self, mock_terminal_manager):
-        """测试有会话的列表"""
+        """Test a non-empty session list."""
         mock_terminal_manager.return_value.list_sessions.return_value = [
             {"session_id": "/dev/ttyUSB0"},
             {"session_id": "/dev/ttyUSB1"},
@@ -184,10 +184,10 @@ class TestListSessions:
 
 
 class TestGetSessionInfo:
-    """测试 get_session_info 工具"""
+    """Tests for the get_session_info tool."""
 
     def test_get_session_info_success(self, mock_terminal_manager):
-        """测试成功获取会话信息"""
+        """Test fetching session info successfully."""
         mock_terminal_manager.return_value.get_session_info.return_value = {
             "session_id": "/dev/ttyUSB0",
             "port": "/dev/ttyUSB0",
@@ -205,10 +205,10 @@ class TestGetSessionInfo:
 
 
 class TestClearBuffer:
-    """测试 clear_buffer 工具"""
+    """Tests for the clear_buffer tool."""
 
     def test_clear_buffer_success(self, mock_terminal_manager):
-        """测试成功清空缓冲区"""
+        """Test clearing the buffer successfully."""
         mock_terminal_manager.return_value.clear_buffer.return_value = {
             "success": True,
             "session_id": "/dev/ttyUSB0",

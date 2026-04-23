@@ -1,4 +1,4 @@
-"""类型模块测试"""
+"""Tests for the types module."""
 
 from uart_mcp.types import (
     DEFAULT_BAUDRATE,
@@ -16,10 +16,10 @@ from uart_mcp.types import (
 
 
 class TestEnums:
-    """测试枚举类型"""
+    """Test enumeration types."""
 
     def test_parity_values(self):
-        """测试校验位枚举"""
+        """Test the parity enumeration."""
         assert Parity.NONE.value == "N"
         assert Parity.EVEN.value == "E"
         assert Parity.ODD.value == "O"
@@ -27,23 +27,23 @@ class TestEnums:
         assert Parity.SPACE.value == "S"
 
     def test_stopbits_values(self):
-        """测试停止位枚举"""
+        """Test the stop-bits enumeration."""
         assert StopBits.ONE.value == 1
         assert StopBits.ONE_POINT_FIVE.value == 1.5
         assert StopBits.TWO.value == 2
 
     def test_flow_control_values(self):
-        """测试流控制枚举"""
+        """Test the flow-control enumeration."""
         assert FlowControl.NONE.value == "none"
         assert FlowControl.HARDWARE.value == "hardware"
         assert FlowControl.SOFTWARE.value == "software"
 
 
 class TestSerialConfig:
-    """测试串口配置类"""
+    """Test the serial configuration class."""
 
     def test_default_config(self):
-        """测试默认配置"""
+        """Test the default configuration."""
         config = SerialConfig()
         assert config.baudrate == DEFAULT_BAUDRATE
         assert config.bytesize == DEFAULT_BYTESIZE
@@ -52,7 +52,7 @@ class TestSerialConfig:
         assert config.flow_control == DEFAULT_FLOW_CONTROL
 
     def test_custom_config(self):
-        """测试自定义配置"""
+        """Test a custom configuration."""
         config = SerialConfig(
             baudrate=115200,
             bytesize=7,
@@ -67,7 +67,7 @@ class TestSerialConfig:
         assert config.flow_control == FlowControl.HARDWARE
 
     def test_to_dict(self):
-        """测试转换为字典"""
+        """Test conversion to dictionary."""
         config = SerialConfig()
         result = config.to_dict()
         assert result["baudrate"] == DEFAULT_BAUDRATE
@@ -78,10 +78,10 @@ class TestSerialConfig:
 
 
 class TestPortInfo:
-    """测试串口信息类"""
+    """Test the serial port info class."""
 
     def test_port_info_creation(self):
-        """测试创建串口信息"""
+        """Test creating a serial port info object."""
         info = PortInfo(
             port="/dev/ttyUSB0",
             description="USB Serial",
@@ -92,7 +92,7 @@ class TestPortInfo:
         assert info.hwid == "USB VID:PID=1234:5678"
 
     def test_to_dict(self):
-        """测试转换为字典"""
+        """Test conversion to dictionary."""
         info = PortInfo(port="COM1", description="COM Port", hwid="ACPI\\PNP0501")
         result = info.to_dict()
         assert result["port"] == "COM1"
@@ -101,10 +101,10 @@ class TestPortInfo:
 
 
 class TestPortStatus:
-    """测试串口状态类"""
+    """Test the serial port status class."""
 
     def test_port_status_open(self):
-        """测试已打开的串口状态"""
+        """Test an open serial port status."""
         config = SerialConfig()
         status = PortStatus(
             port="/dev/ttyUSB0",
@@ -118,7 +118,7 @@ class TestPortStatus:
         assert status.reconnecting is False
 
     def test_to_dict(self):
-        """测试转换为字典"""
+        """Test conversion to dictionary."""
         config = SerialConfig()
         status = PortStatus(port="/dev/ttyUSB0", is_open=True, config=config)
         result = status.to_dict()

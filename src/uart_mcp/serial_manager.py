@@ -1,6 +1,7 @@
-"""串口管理器模块
+"""Serial port manager module.
 
-提供串口的枚举、打开、关闭、配置等核心功能。
+Provides the core functionality for enumerating, opening, closing, and
+configuring serial ports.
 """
 
 import logging
@@ -36,23 +37,23 @@ from .types import (
 
 logger = logging.getLogger(__name__)
 
-# 重连检测间隔（秒）
+# Reconnect-check interval (seconds)
 RECONNECT_CHECK_INTERVAL = 2.0
-# 重连尝试间隔（秒）
+# Reconnect-retry interval (seconds)
 RECONNECT_RETRY_INTERVAL = 3.0
 
 
 class ManagedPort:
-    """管理的串口连接
+    """A managed serial port connection.
 
-    封装 pyserial 的 Serial 对象，添加配置和状态管理。
+    Wraps pyserial's Serial object and adds configuration and state tracking.
 
     Attributes:
-        port: 串口路径
-        serial: pyserial Serial 对象
-        config: 串口配置
-        reconnecting: 是否正在重连
-        auto_reconnect: 是否启用自动重连
+        port: Serial port path.
+        serial: pyserial Serial object.
+        config: Serial port configuration.
+        reconnecting: Whether a reconnect is in progress.
+        auto_reconnect: Whether auto-reconnect is enabled.
     """
 
     def __init__(
@@ -71,12 +72,12 @@ class ManagedPort:
 
     @property
     def is_connected(self) -> bool:
-        """检查物理连接状态"""
+        """Check the physical connection state."""
         try:
-            # 尝试读取 DSR 状态来检测连接
-            # 如果串口已断开，这会抛出异常
+            # Try reading DSR state to probe the connection.
+            # If the port has been disconnected, this raises an exception.
             if self.serial.is_open:
-                # 某些串口可能不支持 DSR，所以我们用 in_waiting 检查
+                # Some ports may not support DSR, so we probe via in_waiting
                 _ = self.serial.in_waiting
                 return True
         except (SerialException, OSError):
@@ -85,23 +86,24 @@ class ManagedPort:
 
 
 class SerialManager:
-    """串口管理器
+    """Serial port manager.
 
-    提供串口设备的枚举、打开、关闭、配置等功能。
-    支持多串口同时连接、配置热更新和自动重连。
+    Provides enumeration, opening, closing, and configuration of serial
+    devices. Supports concurrent multi-port connections, configuration
+    hot-update, and auto-reconnect.
 
     Attributes:
-        _ports: 已打开的串口字典，键为串口路径
-        _lock: 线程锁
-        _reconnect_thread: 重连检测线程
-        _running: 管理器运行状态
+        _ports: Dict of open ports keyed by port path.
+        _lock: Thread lock.
+        _reconnect_thread: Reconnect-check thread.
+        _running: Whether the manager is running.
     """
 
     def __init__(self, enable_auto_reconnect: bool = True) -> None:
-        """初始化串口管理器
+        """Initialize the serial port manager.
 
         Args:
-            enable_auto_reconnect: 是否启用自动重连功能
+            enable_auto_reconnect: Whether to enable the auto-reconnect feature.
         """
         self._ports: dict[str, ManagedPort] = {}
         self._lock = threading.RLock()
@@ -113,46 +115,46 @@ class SerialManager:
             self._start_reconnect_thread()
 
     def _start_reconnect_thread(self) -> None:
-        """启动重连检测线程"""
+        """Start the reconnect-check thread."""
         self._reconnect_thread = threading.Thread(
             target=self._reconnect_loop, daemon=True, name="serial-reconnect"
         )
         self._reconnect_thread.start()
-        logger.debug("重连检测线程已启动")
+        logger.debug("Reconnect-check thread started")
 
     def _reconnect_loop(self) -> None:
-        """重连检测循环"""
+        """Reconnect-check loop."""
         while self._running:
             try:
                 self._check_and_reconnect()
             except Exception as e:
-                logger.error("重连检测异常：%s", e)
+                logger.error("Reconnect check raised an exception: %s", e)
             time.sleep(RECONNECT_CHECK_INTERVAL)
 
     def _check_and_reconnect(self) -> None:
-        """检查并重连断开的串口"""
+        """Check for disconnected ports and reconnect them."""
         with self._lock:
             ports_to_reconnect: list[tuple[str, SerialConfig]] = []
             for port_path, managed in list(self._ports.items()):
                 if not managed.auto_reconnect:
                     continue
                 if not managed.is_connected and not managed.reconnecting:
-                    logger.info("检测到串口断开：%s", port_path)
+                    logger.info("Detected port disconnection: %s", port_path)
                     managed.reconnecting = True
                     ports_to_reconnect.append((port_path, managed.config))
 
-        # 在锁外执行重连操作
+        # Perform the reconnect outside the lock
         for port_path, config in ports_to_reconnect:
             self._try_reconnect(port_path, config)
 
     def _try_reconnect(self, port: str, config: SerialConfig) -> None:
-        """尝试重连串口
+        """Attempt to reconnect a serial port.
 
         Args:
-            port: 串口路径
-            config: 串口配置
+            port: Serial port path.
+            config: Serial port configuration.
         """
-        logger.info("尝试重连串口：%s", port)
+        logger.info("Attempting to reconnect serial port: %s", port)
         try:
             serial_obj = self._create_serial(port, config)
             with self._lock:
@@ -162,40 +164,44 @@ class SerialManager:
                         old_managed.serial.close()
                     except Exception:
                         pass
-                    # 保留原始的 auto_reconnect 设置
+                    # Preserve the original auto_reconnect setting
                     self._ports[port] = ManagedPort(
                         port,
                         serial_obj,
                         config,
                         auto_reconnect=old_managed.auto_reconnect,
                     )
-                    logger.info("串口重连成功：%s", port)
+                    logger.info("Serial port reconnected successfully: %s", port)
                 else:
-                    # 端口在重连期间被关闭，释放新创建的串口资源
+                    # The port was closed during reconnect; release the new resource
                     serial_obj.close()
-                    logger.info("串口在重连期间被关闭，已释放资源：%s", port)
+                    logger.info(
+                        "Serial port was closed during reconnect; "
+                        "newly created resource released: %s",
+                        port,
+                    )
         except Exception as e:
-            logger.warning("串口重连失败：%s - %s", port, e)
+            logger.warning("Serial port reconnect failed: %s - %s", port, e)
             with self._lock:
                 if port in self._ports:
                     self._ports[port].reconnecting = False
 
     def _create_serial(self, port: str, config: SerialConfig) -> serial.Serial:
-        """创建 pyserial Serial 对象
+        """Create a pyserial Serial object.
 
         Args:
-            port: 串口路径
-            config: 串口配置
+            port: Serial port path.
+            config: Serial port configuration.
 
         Returns:
-            配置好的 Serial 对象
+            Configured Serial object.
 
         Raises:
-            PortNotFoundError: 串口不存在
-            PortBusyError: 串口被占用
-            PortOpenFailedError: 打开失败
+            PortNotFoundError: Serial port does not exist.
+            PortBusyError: Serial port is in use.
+            PortOpenFailedError: Failed to open the port.
         """
-        # 转换配置
+        # Translate configuration
         parity_map = {
             Parity.NONE: serial.PARITY_NONE,
             Parity.EVEN: serial.PARITY_EVEN,
@@ -234,19 +240,22 @@ class SerialManager:
             raise PortOpenFailedError(port, str(e)) from e
 
     def list_ports(self) -> list[PortInfo]:
-        """列出所有可用串口
+        """List all available serial ports.
 
-        返回系统中所有可用的串口，已过滤黑名单中的串口。
+        Returns all serial ports available on the system, filtered by the
+        blacklist.
 
         Returns:
-            串口信息列表
+            List of serial port info.
         """
         blacklist = get_blacklist_manager()
         ports: list[PortInfo] = []
 
         for port_info in serial.tools.list_ports.comports():
             if blacklist.is_blacklisted(port_info.device):
-                logger.debug("串口在黑名单中，已过滤：%s", port_info.device)
+                logger.debug(
+                    "Serial port is blacklisted, filtered out: %s", port_info.device
+                )
                 continue
             ports.append(
                 PortInfo(
@@ -270,42 +279,42 @@ class SerialManager:
         write_timeout_ms: int | None = None,
         auto_reconnect: bool | None = None,
     ) -> PortStatus:
-        """打开串口
+        """Open a serial port.
 
         Args:
-            port: 串口路径
-            baudrate: 波特率（None 时使用配置默认值）
-            bytesize: 数据位（None 时使用配置默认值）
-            parity: 校验位（None 时使用配置默认值）
-            stopbits: 停止位（None 时使用配置默认值）
-            flow_control: 流控制（None 时使用配置默认值）
-            read_timeout_ms: 读取超时（毫秒，None 时使用配置默认值）
-            write_timeout_ms: 写入超时（毫秒，None 时使用配置默认值）
-            auto_reconnect: 是否启用自动重连（None 时使用配置默认值）
+            port: Serial port path.
+            baudrate: Baud rate (falls back to config default if None).
+            bytesize: Data bits (falls back to config default if None).
+            parity: Parity bit (falls back to config default if None).
+            stopbits: Stop bits (falls back to config default if None).
+            flow_control: Flow control (falls back to config default if None).
+            read_timeout_ms: Read timeout in ms (falls back to config default if None).
+            write_timeout_ms: Write timeout in ms (falls back to config default if None).
+            auto_reconnect: Enable auto-reconnect (falls back to config default if None).
 
         Returns:
-            串口状态
+            Serial port status.
 
         Raises:
-            PortBlacklistedError: 串口在黑名单中
-            PortNotFoundError: 串口不存在
-            PortBusyError: 串口被占用
-            InvalidParamError: 参数无效
+            PortBlacklistedError: Port is blacklisted.
+            PortNotFoundError: Port does not exist.
+            PortBusyError: Port is in use.
+            InvalidParamError: Parameter is invalid.
         """
-        # 检查黑名单
+        # Check blacklist
         blacklist = get_blacklist_manager()
         if blacklist.is_blacklisted(port):
             raise PortBlacklistedError(port)
 
-        # 获取全局配置作为默认值
+        # Use global config as the default source
         global_config = get_config_manager().config
 
-        # 使用用户参数或配置默认值
+        # Prefer explicit arguments over config defaults
         final_baudrate = baudrate if baudrate is not None else global_config.baudrate
         final_bytesize = bytesize if bytesize is not None else global_config.bytesize
         final_parity = parity if parity is not None else global_config.parity
         final_stopbits = stopbits if stopbits is not None else global_config.stopbits
-        # 流控：显式传入时优先使用传入值
+        # Flow control: explicit argument wins
         if flow_control is None:
             final_flow_control = (
                 "software" if global_config.xonxoff else
@@ -322,7 +331,7 @@ class SerialManager:
         final_write_timeout = cc.write_timeout if wt is None else wt
         final_auto_reconnect = cc.auto_reconnect if ar is None else ar
 
-        # 验证参数
+        # Validate parameters
         config = self._validate_and_create_config(
             final_baudrate,
             final_bytesize,
@@ -334,10 +343,12 @@ class SerialManager:
         )
 
         with self._lock:
-            # 检查是否已打开（幂等操作）
+            # Check if already open (idempotent)
             if port in self._ports:
                 managed = self._ports[port]
-                logger.info("串口已打开，返回当前状态：%s", port)
+                logger.info(
+                    "Serial port already open; returning current status: %s", port
+                )
                 return PortStatus(
                     port=port,
                     is_open=True,
@@ -346,11 +357,11 @@ class SerialManager:
                     reconnecting=managed.reconnecting,
                 )
 
-            # 打开串口
+            # Open the port
             serial_obj = self._create_serial(port, config)
             managed = ManagedPort(port, serial_obj, config, final_auto_reconnect)
             self._ports[port] = managed
-            logger.info("串口打开成功：%s", port)
+            logger.info("Serial port opened successfully: %s", port)
 
             return PortStatus(
                 port=port,
@@ -370,54 +381,56 @@ class SerialManager:
         read_timeout_ms: int,
         write_timeout_ms: int,
     ) -> SerialConfig:
-        """验证参数并创建配置对象
+        """Validate parameters and build a configuration object.
 
         Raises:
-            InvalidParamError: 参数无效
+            InvalidParamError: Parameter is invalid.
         """
-        # 验证波特率
+        # Validate baud rate
         if baudrate not in SUPPORTED_BAUDRATES:
             raise InvalidParamError(
-                "baudrate", baudrate, f"支持的值：{SUPPORTED_BAUDRATES}"
+                "baudrate", baudrate, f"supported values: {SUPPORTED_BAUDRATES}"
             )
 
-        # 验证数据位
+        # Validate data bits
         if bytesize not in SUPPORTED_BYTESIZES:
             raise InvalidParamError(
-                "bytesize", bytesize, f"支持的值：{SUPPORTED_BYTESIZES}"
+                "bytesize", bytesize, f"supported values: {SUPPORTED_BYTESIZES}"
             )
 
-        # 验证校验位
+        # Validate parity
         try:
             parity_enum = Parity(parity)
         except ValueError:
             raise InvalidParamError(
-                "parity", parity, f"支持的值：{[p.value for p in Parity]}"
+                "parity", parity, f"supported values: {[p.value for p in Parity]}"
             )
 
-        # 验证停止位
+        # Validate stop bits
         try:
             stopbits_enum = StopBits(stopbits)
         except ValueError:
             raise InvalidParamError(
-                "stopbits", stopbits, f"支持的值：{[s.value for s in StopBits]}"
+                "stopbits", stopbits, f"supported values: {[s.value for s in StopBits]}"
             )
 
-        # 验证流控制
+        # Validate flow control
         try:
             flow_enum = FlowControl(flow_control)
         except ValueError:
             valid_values = [f.value for f in FlowControl]
             raise InvalidParamError(
-                "flow_control", flow_control, f"支持的值：{valid_values}"
+                "flow_control", flow_control, f"supported values: {valid_values}"
             )
 
-        # 验证超时
+        # Validate timeouts
         if read_timeout_ms < 0 or read_timeout_ms > 60000:
-            raise InvalidParamError("read_timeout_ms", read_timeout_ms, "范围：0-60000")
+            raise InvalidParamError(
+                "read_timeout_ms", read_timeout_ms, "range: 0-60000"
+            )
         if write_timeout_ms < 0 or write_timeout_ms > 60000:
             raise InvalidParamError(
-                "write_timeout_ms", write_timeout_ms, "范围：0-60000"
+                "write_timeout_ms", write_timeout_ms, "range: 0-60000"
             )
 
         return SerialConfig(
@@ -431,16 +444,16 @@ class SerialManager:
         )
 
     def close_port(self, port: str) -> dict[str, Any]:
-        """关闭串口
+        """Close a serial port.
 
         Args:
-            port: 串口路径
+            port: Serial port path.
 
         Returns:
-            操作结果
+            Operation result.
 
         Raises:
-            PortClosedError: 串口未打开
+            PortClosedError: Serial port is not open.
         """
         with self._lock:
             if port not in self._ports:
@@ -450,9 +463,11 @@ class SerialManager:
             try:
                 managed.serial.close()
             except Exception as e:
-                logger.warning("关闭串口时发生异常：%s - %s", port, e)
+                logger.warning(
+                    "Exception raised while closing serial port: %s - %s", port, e
+                )
 
-            logger.info("串口关闭成功：%s", port)
+            logger.info("Serial port closed successfully: %s", port)
             return {"success": True, "port": port}
 
     def set_config(
@@ -466,24 +481,24 @@ class SerialManager:
         read_timeout_ms: int | None = None,
         write_timeout_ms: int | None = None,
     ) -> PortStatus:
-        """修改串口配置（热更新）
+        """Update serial port configuration (hot update).
 
         Args:
-            port: 串口路径
-            baudrate: 波特率（可选）
-            bytesize: 数据位（可选）
-            parity: 校验位（可选）
-            stopbits: 停止位（可选）
-            flow_control: 流控制（可选）
-            read_timeout_ms: 读取超时（可选）
-            write_timeout_ms: 写入超时（可选）
+            port: Serial port path.
+            baudrate: Baud rate (optional).
+            bytesize: Data bits (optional).
+            parity: Parity bit (optional).
+            stopbits: Stop bits (optional).
+            flow_control: Flow control (optional).
+            read_timeout_ms: Read timeout (optional).
+            write_timeout_ms: Write timeout (optional).
 
         Returns:
-            更新后的串口状态
+            Updated serial port status.
 
         Raises:
-            PortClosedError: 串口未打开
-            InvalidParamError: 参数无效
+            PortClosedError: Serial port is not open.
+            InvalidParamError: Parameter is invalid.
         """
         with self._lock:
             if port not in self._ports:
@@ -492,8 +507,8 @@ class SerialManager:
             managed = self._ports[port]
             current_config = managed.config
 
-            # 构建新配置，未指定的参数使用当前值
-            cc = current_config  # 简化引用
+            # Build new config; unspecified params keep their current values
+            cc = current_config  # shorthand
             new_baudrate = baudrate if baudrate is not None else cc.baudrate
             new_bytesize = bytesize if bytesize is not None else cc.bytesize
             new_parity = parity if parity is not None else cc.parity.value
@@ -519,11 +534,11 @@ class SerialManager:
                 new_write_timeout,
             )
 
-            # 应用配置（热更新）
+            # Apply the configuration (hot update)
             self._apply_config(managed, new_config)
             managed.config = new_config
 
-            logger.info("串口配置更新成功：%s", port)
+            logger.info("Serial port configuration updated: %s", port)
             return PortStatus(
                 port=port,
                 is_open=True,
@@ -533,15 +548,15 @@ class SerialManager:
             )
 
     def _apply_config(self, managed: ManagedPort, config: SerialConfig) -> None:
-        """应用配置到已打开的串口
+        """Apply a configuration to an open serial port.
 
         Args:
-            managed: 管理的串口对象
-            config: 新配置
+            managed: The managed port object.
+            config: New configuration.
         """
         ser = managed.serial
 
-        # 转换校验位
+        # Map parity
         parity_map = {
             Parity.NONE: serial.PARITY_NONE,
             Parity.EVEN: serial.PARITY_EVEN,
@@ -550,14 +565,14 @@ class SerialManager:
             Parity.SPACE: serial.PARITY_SPACE,
         }
 
-        # 转换停止位
+        # Map stop bits
         stopbits_map = {
             StopBits.ONE: serial.STOPBITS_ONE,
             StopBits.ONE_POINT_FIVE: serial.STOPBITS_ONE_POINT_FIVE,
             StopBits.TWO: serial.STOPBITS_TWO,
         }
 
-        # 使用 apply_settings 进行热更新
+        # Use apply_settings for hot update
         ser.apply_settings(
             {
                 "baudrate": config.baudrate,
@@ -569,21 +584,21 @@ class SerialManager:
             }
         )
 
-        # 更新超时设置
+        # Update timeout settings
         ser.timeout = config.read_timeout_ms / 1000.0
         ser.write_timeout = config.write_timeout_ms / 1000.0
 
     def get_status(self, port: str) -> PortStatus:
-        """获取串口状态
+        """Return the status of a serial port.
 
         Args:
-            port: 串口路径
+            port: Serial port path.
 
         Returns:
-            串口状态
+            Serial port status.
 
         Raises:
-            PortClosedError: 串口未打开
+            PortClosedError: Serial port is not open.
         """
         with self._lock:
             if port not in self._ports:
@@ -599,10 +614,10 @@ class SerialManager:
             )
 
     def get_all_status(self) -> list[PortStatus]:
-        """获取所有已打开串口的状态
+        """Return the status of every open serial port.
 
         Returns:
-            串口状态列表
+            List of serial port statuses.
         """
         with self._lock:
             return [
@@ -617,18 +632,18 @@ class SerialManager:
             ]
 
     def send_data(self, port: str, data: bytes) -> int:
-        """发送原始字节数据
+        """Send raw byte data.
 
         Args:
-            port: 串口路径
-            data: 要发送的字节数据
+            port: Serial port path.
+            data: Byte data to send.
 
         Returns:
-            发送的字节数
+            Number of bytes written.
 
         Raises:
-            PortClosedError: 串口未打开
-            WriteFailedError: 写入失败
+            PortClosedError: Serial port is not open.
+            WriteFailedError: Write failed.
         """
         with self._lock:
             if port not in self._ports:
@@ -638,27 +653,27 @@ class SerialManager:
             try:
                 result = managed.serial.write(data)
                 bytes_written: int = result if result is not None else 0
-                logger.debug("发送数据到串口 %s：%d 字节", port, bytes_written)
+                logger.debug("Sent data to serial port %s: %d bytes", port, bytes_written)
                 return bytes_written
             except SerialException as e:
-                logger.error("串口写入失败：%s - %s", port, e)
+                logger.error("Serial port write failed: %s - %s", port, e)
                 raise WriteFailedError(port, str(e)) from e
 
     def read_data(
         self, port: str, size: int | None = None, timeout_ms: int | None = None
     ) -> bytes:
-        """读取原始字节数据
+        """Read raw byte data.
 
         Args:
-            port: 串口路径
-            size: 读取字节数，None 表示读取所有可用数据
-            timeout_ms: 读取超时（毫秒），None 使用串口配置的超时
+            port: Serial port path.
+            size: Number of bytes to read; None reads all available data.
+            timeout_ms: Read timeout in ms; None uses the port's configured timeout.
 
         Returns:
-            读取的字节数据
+            Raw bytes read.
 
         Raises:
-            PortClosedError: 串口未打开
+            PortClosedError: Serial port is not open.
         """
         with self._lock:
             if port not in self._ports:
@@ -667,75 +682,77 @@ class SerialManager:
             managed = self._ports[port]
             ser = managed.serial
 
-            # 保存原始超时设置
+            # Save the original timeout setting
             original_timeout = ser.timeout
 
             try:
-                # 如果指定了超时，临时修改
+                # If a timeout was supplied, apply it temporarily
                 if timeout_ms is not None:
                     ser.timeout = timeout_ms / 1000.0
 
                 data: bytes
                 if size is not None:
-                    # 读取指定字节数
+                    # Read a fixed number of bytes
                     data = ser.read(size)
                 else:
-                    # 读取所有可用数据
+                    # Read all available data
                     available: int = ser.in_waiting
                     if available > 0:
                         data = ser.read(available)
                     else:
-                        # 没有可用数据，尝试读取一次（会等待超时）
+                        # No data available; try reading once (blocks up to timeout)
                         data = ser.read(1)
                         if data:
-                            # 如果读到数据，继续读取剩余的
+                            # If we got a byte, read whatever else is waiting
                             remaining: int = ser.in_waiting
                             if remaining > 0:
                                 data += ser.read(remaining)
 
-                logger.debug("从串口 %s 读取数据：%d 字节", port, len(data))
+                logger.debug(
+                    "Read data from serial port %s: %d bytes", port, len(data)
+                )
                 return data
             except SerialException as e:
-                logger.error("串口读取失败：%s - %s", port, e)
+                logger.error("Serial port read failed: %s - %s", port, e)
                 raise PortClosedError(port) from e
             finally:
-                # 恢复原始超时设置
+                # Restore the original timeout setting
                 if timeout_ms is not None:
                     ser.timeout = original_timeout
 
     def shutdown(self) -> None:
-        """关闭管理器
+        """Shut down the manager.
 
-        停止重连线程并关闭所有串口。
+        Stops the reconnect thread and closes every open serial port.
         """
         self._running = False
 
-        # 等待重连线程结束
+        # Wait for the reconnect thread to finish
         if self._reconnect_thread and self._reconnect_thread.is_alive():
             self._reconnect_thread.join(timeout=5.0)
 
-        # 关闭所有串口
+        # Close all serial ports
         with self._lock:
             for port, managed in list(self._ports.items()):
                 try:
                     managed.serial.close()
-                    logger.debug("关闭串口：%s", port)
+                    logger.debug("Closed serial port: %s", port)
                 except Exception as e:
-                    logger.warning("关闭串口失败：%s - %s", port, e)
+                    logger.warning("Failed to close serial port: %s - %s", port, e)
             self._ports.clear()
 
-        logger.info("串口管理器已关闭")
+        logger.info("Serial port manager has been shut down")
 
 
-# 全局串口管理器实例
+# Global serial port manager instance
 _serial_manager: SerialManager | None = None
 
 
 def get_serial_manager() -> SerialManager:
-    """获取串口管理器单例
+    """Return the serial port manager singleton.
 
     Returns:
-        串口管理器实例
+        Serial port manager instance.
     """
     global _serial_manager
     if _serial_manager is None:

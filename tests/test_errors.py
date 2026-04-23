@@ -1,4 +1,4 @@
-"""错误模块测试"""
+"""Tests for the errors module."""
 
 from uart_mcp.errors import (
     ErrorCode,
@@ -12,10 +12,10 @@ from uart_mcp.errors import (
 
 
 class TestErrorCode:
-    """测试错误码枚举"""
+    """Test the error code enumeration."""
 
     def test_error_codes_values(self):
-        """测试错误码值"""
+        """Test error code values."""
         assert ErrorCode.PORT_NOT_FOUND == 1001
         assert ErrorCode.PORT_BUSY == 1002
         assert ErrorCode.PORT_OPEN_FAILED == 1003
@@ -28,58 +28,58 @@ class TestErrorCode:
 
 
 class TestSerialError:
-    """测试串口异常基类"""
+    """Test the serial port base exception."""
 
     def test_serial_error_with_detail(self):
-        """测试带详情的异常"""
+        """Test an exception raised with detail."""
         error = SerialError(ErrorCode.PORT_NOT_FOUND, "/dev/ttyUSB0")
         assert error.code == ErrorCode.PORT_NOT_FOUND
-        assert "串口不存在" in error.message
+        assert "Serial port not found" in error.message
         assert "/dev/ttyUSB0" in error.message
 
     def test_serial_error_without_detail(self):
-        """测试不带详情的异常"""
+        """Test an exception raised without detail."""
         error = SerialError(ErrorCode.PORT_NOT_FOUND)
         assert error.code == ErrorCode.PORT_NOT_FOUND
-        assert error.message == "串口不存在"
+        assert error.message == "Serial port not found"
 
     def test_to_dict(self):
-        """测试转换为字典"""
+        """Test conversion to dictionary."""
         error = SerialError(ErrorCode.PORT_NOT_FOUND, "/dev/ttyUSB0")
         result = error.to_dict()
         assert result["error"]["code"] == 1001
-        assert "串口不存在" in result["error"]["message"]
+        assert "Serial port not found" in result["error"]["message"]
 
 
 class TestSpecificErrors:
-    """测试具体异常类"""
+    """Test specific exception classes."""
 
     def test_port_not_found_error(self):
-        """测试串口不存在异常"""
+        """Test the port-not-found exception."""
         error = PortNotFoundError("/dev/ttyUSB0")
         assert error.code == ErrorCode.PORT_NOT_FOUND
         assert "/dev/ttyUSB0" in error.message
 
     def test_port_busy_error(self):
-        """测试串口被占用异常"""
+        """Test the port-busy exception."""
         error = PortBusyError("COM1")
         assert error.code == ErrorCode.PORT_BUSY
         assert "COM1" in error.message
 
     def test_port_closed_error(self):
-        """测试串口已关闭异常"""
+        """Test the port-closed exception."""
         error = PortClosedError("/dev/ttyUSB0")
         assert error.code == ErrorCode.PORT_CLOSED
 
     def test_invalid_param_error(self):
-        """测试参数无效异常"""
-        error = InvalidParamError("baudrate", -1, "必须为正数")
+        """Test the invalid-parameter exception."""
+        error = InvalidParamError("baudrate", -1, "must be positive")
         assert error.code == ErrorCode.INVALID_PARAM
         assert "baudrate" in error.message
         assert "-1" in error.message
 
     def test_port_blacklisted_error(self):
-        """测试串口在黑名单中异常"""
+        """Test the port-blacklisted exception."""
         error = PortBlacklistedError("/dev/ttyS0")
         assert error.code == ErrorCode.PORT_BLACKLISTED
         assert "/dev/ttyS0" in error.message

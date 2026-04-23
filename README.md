@@ -1,37 +1,37 @@
 # UART MCP Server
 
-[English](README_EN.md) | 中文
+English | [中文](README_CN.md)
 
-为 AI 助手提供串口通信能力的 MCP Server。
+MCP Server that provides serial port communication capabilities for AI assistants.
 
 [![Python](https://img.shields.io/badge/Python-3.13+-blue.svg)](https://www.python.org/)
 [![MCP](https://img.shields.io/badge/MCP-1.0+-green.svg)](https://modelcontextprotocol.io/)
 [![License](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
 
-## 功能特性
+## Features
 
-- **串口管理** - 枚举、打开、关闭和配置串口设备
-- **数据通信** - 支持文本和二进制模式的数据收发
-- **终端会话** - 创建交互式终端会话，支持命令发送和输出读取
-- **热配置** - 支持在不关闭串口的情况下修改配置参数
-- **自动重连** - 设备断开后自动尝试重新连接
+- **Serial Port Management** - Enumerate, open, close, and configure serial port devices
+- **Data Communication** - Support text and binary mode for sending/receiving data
+- **Terminal Session** - Create interactive terminal sessions with command sending and output reading
+- **Hot Configuration** - Modify configuration parameters without closing the serial port
+- **Auto Reconnect** - Automatically attempt to reconnect after device disconnection
 
-## 快速开始
+## Quick Start
 
-### 提示词配置
+### Prompt Configuration
 
-为了让 AI 助手优先使用 UART 工具操作串口，建议在项目提示词文件中添加以下内容：
+To make AI assistants prioritize using UART tools for serial port operations, add the following to your project prompt file:
 
 ```markdown
-始终使用 uart MCP 工具进行串口操作，包括列出串口、打开/关闭串口、发送/接收数据等。
+Always use uart MCP tools for serial port operations, including listing ports, opening/closing ports, sending/receiving data, etc.
 ```
 
-不同工具的提示词文件位置：
+Prompt file locations for different tools:
 
-| 工具 | 提示词文件 |
-|------|----------|
-| Claude Code | `CLAUDE.md` 或 `.claude/settings.json` |
-| Factory Droid | `AGENTS.md` 或 `.factory/droids/` |
+| Tool | Prompt File |
+|------|-------------|
+| Claude Code | `CLAUDE.md` or `.claude/settings.json` |
+| Factory Droid | `AGENTS.md` or `.factory/droids/` |
 | Cursor | `.cursor/rules/` |
 | Windsurf | `.windsurfrules` |
 
@@ -43,7 +43,7 @@ claude mcp add uart -- uvx --from git+https://github.com/donnel666/uart-mcp.git 
 
 ### Codex CLI
 
-在 `~/.codex/config.toml` 中添加：
+Add to `~/.codex/config.toml`:
 
 ```toml
 [mcp_servers.uart]
@@ -54,7 +54,7 @@ args = ["--from", "git+https://github.com/donnel666/uart-mcp.git", "uart-mcp"]
 
 ### Factory Droid
 
-在项目 `.factory/settings.json` 或全局 `~/.factory/settings.json` 中添加：
+Add to project `.factory/settings.json` or global `~/.factory/settings.json`:
 
 ```json
 {
@@ -84,102 +84,102 @@ args = ["--from", "git+https://github.com/donnel666/uart-mcp.git", "uart-mcp"]
 }
 ```
 
-## 可用工具
+## Available Tools
 
-### 串口管理
+### Serial Port Management
 
-| 工具 | 描述 |
-|------|------|
-| `list_ports` | 列出所有可用串口设备 |
-| `open_port` | 打开指定串口（支持配置波特率、数据位、校验位等） |
-| `close_port` | 关闭指定串口 |
-| `set_config` | 修改已打开串口的配置（热更新） |
-| `get_status` | 获取串口当前状态和配置信息 |
+| Tool | Description |
+|------|-------------|
+| `list_ports` | List all available serial port devices |
+| `open_port` | Open specified serial port (supports baud rate, data bits, parity configuration) |
+| `close_port` | Close specified serial port |
+| `set_config` | Modify configuration of opened serial port (hot update) |
+| `get_status` | Get current status and configuration of serial port |
 
-### 数据通信
+### Data Communication
 
-| 工具 | 描述 |
-|------|------|
-| `send_data` | 向串口发送数据（支持文本/二进制模式） |
-| `read_data` | 从串口读取数据（支持文本/二进制模式） |
+| Tool | Description |
+|------|-------------|
+| `send_data` | Send data to serial port (supports text/binary mode) |
+| `read_data` | Read data from serial port (supports text/binary mode) |
 
-### 终端会话
+### Terminal Session
 
-| 工具 | 描述 |
-|------|------|
-| `create_session` | 创建终端会话（支持配置换行符、本地回显） |
-| `close_session` | 关闭终端会话 |
-| `send_command` | 向终端发送命令 |
-| `read_output` | 读取终端输出缓冲区 |
-| `list_sessions` | 列出所有活动会话 |
-| `get_session_info` | 获取会话详细信息 |
-| `clear_buffer` | 清空会话输出缓冲区 |
+| Tool | Description |
+|------|-------------|
+| `create_session` | Create terminal session (supports line ending, local echo configuration) |
+| `close_session` | Close terminal session |
+| `send_command` | Send command to terminal |
+| `read_output` | Read terminal output buffer |
+| `list_sessions` | List all active sessions |
+| `get_session_info` | Get session details |
+| `clear_buffer` | Clear session output buffer |
 
-## 串口权限
+## Serial Port Permissions
 
-请确保本工具有权限访问串口设备：
+Ensure this tool has permission to access serial port devices:
 
 **Linux:**
 ```bash
-# 方法1：临时赋予权限
+# Method 1: Temporarily grant permissions
 sudo chmod 777 /dev/ttyUSB0
 
-# 方法2：将用户加入 dialout 组（推荐，重新登录后生效）
+# Method 2: Add user to dialout group (recommended, effective after re-login)
 sudo usermod -aG dialout $USER
 ```
 
 **macOS:**
 ```bash
-# 将用户加入 wheel 组
+# Add user to wheel group
 sudo dseditgroup -o edit -a $USER -t user wheel
 ```
 
 **Windows:**
-通常无需额外配置，COM 端口默认可访问。
+Usually no additional configuration needed, COM ports are accessible by default.
 
-## 使用示例
+## Usage Examples
 
-### 基础串口通信
+### Basic Serial Communication
 
-1. 使用 `list_ports` 查看可用串口
-2. 使用 `open_port` 打开串口，如 `/dev/ttyUSB0` 或 `COM1`
-3. 使用 `send_data` 发送数据
-4. 使用 `read_data` 读取响应
-5. 使用 `close_port` 关闭串口
+1. Use `list_ports` to view available serial ports
+2. Use `open_port` to open serial port, e.g., `/dev/ttyUSB0` or `COM1`
+3. Use `send_data` to send data
+4. Use `read_data` to read response
+5. Use `close_port` to close serial port
 
-### 终端会话模式
+### Terminal Session Mode
 
-1. 使用 `open_port` 打开串口
-2. 使用 `create_session` 创建终端会话
-3. 使用 `send_command` 发送命令
-4. 使用 `read_output` 读取命令输出
-5. 使用 `close_session` 关闭会话
+1. Use `open_port` to open serial port
+2. Use `create_session` to create terminal session
+3. Use `send_command` to send commands
+4. Use `read_output` to read command output
+5. Use `close_session` to close session
 
-## 串口配置参数
+## Serial Port Configuration Parameters
 
-| 参数 | 默认值 | 可选值 |
-|------|--------|--------|
-| 波特率 | 115200 | 300, 1200, 2400, 4800, 9600, 19200, 38400, 57600, 115200, 230400, 460800, 921600 |
-| 数据位 | 8 | 5, 6, 7, 8 |
-| 校验位 | N (无) | N (无), E (偶), O (奇), M (标记), S (空格) |
-| 停止位 | 1 | 1, 1.5, 2 |
-| 流控制 | none | none, xonxoff, rtscts, dsrdtr |
+| Parameter | Default | Options |
+|-----------|---------|---------|
+| Baud Rate | 115200 | 300, 1200, 2400, 4800, 9600, 19200, 38400, 57600, 115200, 230400, 460800, 921600 |
+| Data Bits | 8 | 5, 6, 7, 8 |
+| Parity | N (None) | N (None), E (Even), O (Odd), M (Mark), S (Space) |
+| Stop Bits | 1 | 1, 1.5, 2 |
+| Flow Control | none | none, xonxoff, rtscts, dsrdtr |
 
-## 配置文件
+## Configuration Files
 
-UART MCP 的配置文件位于：
+UART MCP configuration files are located at:
 
 - **Linux/macOS:** `~/.uart-mcp/`
 - **Windows:** `%APPDATA%\.uart-mcp\`
 
-### 配置文件说明
+### Configuration File Description
 
-| 文件 | 说明 |
-|------|------|
-| `config.toml` | 全局配置（波特率、超时、流控等默认参数） |
-| `blacklist.conf` | 串口黑名单（支持精确匹配和正则表达式） |
+| File | Description |
+|------|-------------|
+| `config.toml` | Global configuration (baud rate, timeout, flow control defaults) |
+| `blacklist.conf` | Serial port blacklist (supports exact match and regex) |
 
-### config.toml 示例
+### config.toml Example
 
 ```toml
 [serial]
@@ -205,47 +205,47 @@ reconnect_interval = 5000
 log_level = "INFO"
 ```
 
-### blacklist.conf 示例
+### blacklist.conf Example
 
 ```conf
-# 黑名单配置（每行一个规则）
-# 支持精确匹配和正则表达式
+# Blacklist configuration (one rule per line)
+# Supports exact match and regex
 
-# 精确匹配
+# Exact match
 /dev/ttyS0
 
-# 正则表达式匹配所有 COM 端口
+# Regex to match all COM ports
 COM[0-9]+
 ```
 
-**注意：** 配置文件权限应为 600（仅所有者可读写），否则会报权限错误。
+**Note:** Configuration file permissions should be 600 (owner read/write only), otherwise a permission error will occur.
 
-## 本地开发
+## Local Development
 
 ```bash
-# 克隆仓库
+# Clone repository
 git clone https://github.com/donnel666/uart-mcp.git
 cd uart-mcp
 
-# 安装依赖
+# Install dependencies
 uv sync --dev
 
-# 运行服务器
+# Run server
 uv run uart-mcp
 
-# 运行测试
+# Run tests
 uv run pytest
 
-# 代码检查
+# Code check
 uv run ruff check src/
 uv run mypy src/
 ```
 
-## 系统要求
+## System Requirements
 
 - Python 3.13+
-- 支持的操作系统: Linux, macOS, Windows
+- Supported OS: Linux, macOS, Windows
 
-## 许可证
+## License
 
 MIT License

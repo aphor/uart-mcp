@@ -1,6 +1,6 @@
-"""数据通信工具实现
+"""Data communication tool implementation.
 
-提供串口数据收发功能，支持文本模式和二进制模式。
+Provides serial-port send/receive functionality for both text and binary modes.
 """
 
 import base64
@@ -15,24 +15,24 @@ def send_data(
     data: str,
     is_binary: bool = False,
 ) -> dict[str, Any]:
-    """发送数据到串口
+    """Send data to a serial port.
 
     Args:
-        port: 串口路径
-        data: 要发送的数据（文本模式为 UTF-8 字符串，二进制模式为 Base64 编码）
-        is_binary: 是否为二进制模式
+        port: Serial port path.
+        data: Data to send (UTF-8 string for text mode, Base64-encoded for binary mode).
+        is_binary: Whether to use binary mode.
 
     Returns:
-        发送结果，包含发送的字节数
+        Send result, including the number of bytes written.
     """
     manager = get_serial_manager()
 
-    # 编码转换
+    # Decode input
     if is_binary:
         try:
             raw_data = base64.b64decode(data)
         except Exception as e:
-            raise InvalidParamError("data", data, f"Base64 解码失败：{e}")
+            raise InvalidParamError("data", data, f"Base64 decode failed: {e}")
     else:
         raw_data = data.encode("utf-8")
 
@@ -46,21 +46,21 @@ def read_data(
     timeout_ms: int | None = None,
     is_binary: bool = False,
 ) -> dict[str, Any]:
-    """从串口读取数据
+    """Read data from a serial port.
 
     Args:
-        port: 串口路径
-        size: 读取字节数，None 表示读取所有可用数据
-        timeout_ms: 读取超时（毫秒），None 使用串口配置的超时
-        is_binary: 是否为二进制模式
+        port: Serial port path.
+        size: Number of bytes to read; None reads all available data.
+        timeout_ms: Read timeout in ms; None uses the port's configured timeout.
+        is_binary: Whether to use binary mode.
 
     Returns:
-        读取结果，包含数据和字节数
+        Read result containing the data and byte count.
     """
     manager = get_serial_manager()
     raw_data = manager.read_data(port, size, timeout_ms)
 
-    # 解码转换
+    # Encode output
     if is_binary:
         result_data = base64.b64encode(raw_data).decode("ascii")
     else:
@@ -69,24 +69,28 @@ def read_data(
     return {"data": result_data, "bytes_read": len(raw_data)}
 
 
-# 工具定义（用于 MCP 注册）
+# Tool definitions (used for MCP registration)
 SEND_DATA_TOOL: dict[str, Any] = {
     "name": "send_data",
-    "description": "向已打开的串口发送数据，支持文本和二进制模式",
+    "description": (
+        "Send data to an open serial port. Supports text and binary modes."
+    ),
     "inputSchema": {
         "type": "object",
         "properties": {
             "port": {
                 "type": "string",
-                "description": "串口路径，如 /dev/ttyUSB0 或 COM1",
+                "description": "Serial port path, e.g. /dev/ttyUSB0 or COM1",
             },
             "data": {
                 "type": "string",
-                "description": "要发送的数据（文本为UTF-8，二进制为Base64）",
+                "description": "Data to send (UTF-8 for text, Base64 for binary)",
             },
             "is_binary": {
                 "type": "boolean",
-                "description": "是否为二进制模式，True 时 data 为 Base64 编码",
+                "description": (
+                    "Whether to use binary mode. When true, data must be Base64-encoded."
+                ),
                 "default": False,
             },
         },
@@ -96,25 +100,34 @@ SEND_DATA_TOOL: dict[str, Any] = {
 
 READ_DATA_TOOL: dict[str, Any] = {
     "name": "read_data",
-    "description": "从已打开的串口读取数据，支持文本和二进制模式",
+    "description": (
+        "Read data from an open serial port. Supports text and binary modes."
+    ),
     "inputSchema": {
         "type": "object",
         "properties": {
             "port": {
                 "type": "string",
-                "description": "串口路径，如 /dev/ttyUSB0 或 COM1",
+                "description": "Serial port path, e.g. /dev/ttyUSB0 or COM1",
             },
             "size": {
                 "type": "integer",
-                "description": "读取字节数，不指定则读取所有可用数据",
+                "description": (
+                    "Number of bytes to read; if omitted, reads all available data."
+                ),
             },
             "timeout_ms": {
                 "type": "integer",
-                "description": "读取超时（毫秒），不指定则使用串口配置的超时",
+                "description": (
+                    "Read timeout in milliseconds; if omitted, uses the port's "
+                    "configured timeout."
+                ),
             },
             "is_binary": {
                 "type": "boolean",
-                "description": "是否为二进制模式，True 时返回 Base64 编码",
+                "description": (
+                    "Whether to use binary mode. When true, data is returned as Base64."
+                ),
                 "default": False,
             },
         },

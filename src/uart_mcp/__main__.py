@@ -1,4 +1,4 @@
-"""UART MCP Server 入口点"""
+"""UART MCP Server entry point."""
 
 from .server import main
 

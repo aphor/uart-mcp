@@ -1,7 +1,7 @@
-"""终端会话管理模块
+"""Terminal session management module.
 
-提供终端会话的创建、管理和数据收发功能。
-支持多会话并发，每个会话独立缓冲。
+Provides creation, management, and data send/receive for terminal sessions.
+Supports concurrent sessions, each with its own buffer.
 """
 
 import logging
@@ -30,20 +30,21 @@ from .types import (
 
 logger = logging.getLogger(__name__)
 
-# 后台读取间隔（秒）
+# Background read interval (seconds)
 READ_INTERVAL = 0.05  # 50ms
 
 
 class TerminalSession:
-    """终端会话
+    """Terminal session.
 
-    管理单个串口的终端会话，包括输出缓冲区和后台读取线程。
+    Manages a terminal session for a single serial port, including its
+    output buffer and background read thread.
 
     Attributes:
-        session_id: 会话ID（即串口路径）
-        port: 串口路径
-        config: 终端配置
-        created_at: 创建时间戳
+        session_id: Session ID (equal to the serial port path).
+        port: Serial port path.
+        config: Terminal configuration.
+        created_at: Creation timestamp.
     """
 
     def __init__(
@@ -53,13 +54,13 @@ class TerminalSession:
         local_echo: bool = DEFAULT_LOCAL_ECHO,
         buffer_size: int = DEFAULT_BUFFER_SIZE,
     ) -> None:
-        """初始化终端会话
+        """Initialize the terminal session.
 
         Args:
-            port: 串口路径
-            line_ending: 换行符类型
-            local_echo: 是否本地回显
-            buffer_size: 输出缓冲区大小
+            port: Serial port path.
+            line_ending: Line-ending type.
+            local_echo: Whether to locally echo input.
+            buffer_size: Output buffer size.
         """
         self.session_id = port
         self.port = port
@@ -70,30 +71,30 @@ class TerminalSession:
         )
         self.created_at = time.time()
 
-        # 输出缓冲区（使用 deque 实现环形缓冲）
+        # Output buffer (ring buffer implemented with a deque)
         self._buffer: deque[bytes] = deque()
         self._buffer_size = 0
         self._max_buffer_size = buffer_size
         self._buffer_lock = threading.Lock()
 
-        # 后台读取线程控制
+        # Background read thread control
         self._running = False
         self._read_thread: threading.Thread | None = None
         self._stop_event = threading.Event()
 
     @property
     def is_active(self) -> bool:
-        """会话是否活跃"""
+        """Whether the session is active."""
         return self._running
 
     @property
     def buffer_length(self) -> int:
-        """当前缓冲区数据量（字节）"""
+        """Current amount of buffered data (bytes)."""
         with self._buffer_lock:
             return self._buffer_size
 
     def start(self) -> None:
-        """启动后台读取线程"""
+        """Start the background read thread."""
         if self._running:
             return
 
@@ -105,10 +106,10 @@ class TerminalSession:
             name=f"terminal-read-{self.port}",
         )
         self._read_thread.start()
-        logger.info("终端会话启动：%s", self.session_id)
+        logger.info("Terminal session started: %s", self.session_id)
 
     def stop(self) -> None:
-        """停止后台读取线程"""
+        """Stop the background read thread."""
         if not self._running:
             return
 
@@ -118,59 +119,61 @@ class TerminalSession:
         if self._read_thread and self._read_thread.is_alive():
             self._read_thread.join(timeout=2.0)
 
-        logger.info("终端会话停止：%s", self.session_id)
+        logger.info("Terminal session stopped: %s", self.session_id)
 
     def _read_loop(self) -> None:
-        """后台读取循环"""
+        """Background read loop."""
         manager = get_serial_manager()
 
         while not self._stop_event.is_set():
             try:
-                # 从串口读取数据
+                # Read data from the serial port
                 data = manager.read_data(self.port, timeout_ms=50)
                 if data:
                     self._append_to_buffer(data)
             except Exception as e:
-                # 串口可能已关闭或出错，停止读取
+                # The port may have been closed or errored; stop reading
                 if self._running:
-                    logger.warning("终端读取异常：%s - %s", self.session_id, e)
+                    logger.warning(
+                        "Terminal read exception: %s - %s", self.session_id, e
+                    )
                     self._running = False
                 break
 
-            # 短暂休眠，避免 CPU 占用过高
+            # Brief sleep to avoid burning CPU
             self._stop_event.wait(READ_INTERVAL)
 
     def _append_to_buffer(self, data: bytes) -> None:
-        """向缓冲区追加数据
+        """Append data to the buffer.
 
-        如果缓冲区满，自动丢弃最旧的数据。
+        If the buffer is full, the oldest chunks are discarded.
 
         Args:
-            data: 要追加的数据
+            data: Bytes to append.
         """
         with self._buffer_lock:
             self._buffer.append(data)
             self._buffer_size += len(data)
 
-            # 如果超出限制，丢弃旧数据
+            # Drop old data if over the size limit
             while self._buffer_size > self._max_buffer_size and self._buffer:
                 old_data = self._buffer.popleft()
                 self._buffer_size -= len(old_data)
 
     def read_output(self, clear: bool = True) -> bytes:
-        """读取输出缓冲区内容
+        """Read the contents of the output buffer.
 
         Args:
-            clear: 是否清空缓冲区
+            clear: Whether to clear the buffer after reading.
 
         Returns:
-            缓冲区中的数据
+            The data currently in the buffer.
         """
         with self._buffer_lock:
             if not self._buffer:
                 return b""
 
-            # 合并所有数据块
+            # Merge all chunks
             result = b"".join(self._buffer)
 
             if clear:
@@ -180,27 +183,27 @@ class TerminalSession:
             return result
 
     def clear_buffer(self) -> None:
-        """清空输出缓冲区"""
+        """Clear the output buffer."""
         with self._buffer_lock:
             self._buffer.clear()
             self._buffer_size = 0
 
     def send_command(self, command: str, add_line_ending: bool = True) -> int:
-        """发送命令
+        """Send a command.
 
         Args:
-            command: 要发送的命令
-            add_line_ending: 是否自动添加换行符
+            command: Command to send.
+            add_line_ending: Whether to automatically append the line ending.
 
         Returns:
-            发送的字节数
+            Number of bytes written.
 
         Raises:
-            SendCommandFailedError: 发送失败
+            SendCommandFailedError: Send failed.
         """
         manager = get_serial_manager()
 
-        # 准备数据
+        # Build payload
         data = command
         if add_line_ending:
             data += self.config.line_ending.value
@@ -210,20 +213,22 @@ class TerminalSession:
         try:
             bytes_written = manager.send_data(self.port, raw_data)
 
-            # 本地回显
+            # Local echo
             if self.config.local_echo:
                 self._append_to_buffer(raw_data)
 
-            logger.debug("终端发送命令：%s - %d 字节", self.session_id, bytes_written)
+            logger.debug(
+                "Terminal sent command: %s - %d bytes", self.session_id, bytes_written
+            )
             return bytes_written
         except Exception as e:
             raise SendCommandFailedError(self.session_id, str(e)) from e
 
     def get_info(self) -> SessionInfo:
-        """获取会话信息
+        """Return session information.
 
         Returns:
-            会话信息
+            Session information.
         """
         return SessionInfo(
             session_id=self.session_id,
@@ -236,18 +241,18 @@ class TerminalSession:
 
 
 class TerminalManager:
-    """终端管理器
+    """Terminal manager.
 
-    管理所有终端会话，提供会话的创建、关闭和查询功能。
-    使用单例模式，确保全局只有一个管理器实例。
+    Manages all terminal sessions and exposes creation, close, and lookup
+    operations. Uses a singleton pattern so only one manager exists globally.
 
     Attributes:
-        _sessions: 会话字典，键为会话ID（串口路径）
-        _lock: 线程锁
+        _sessions: Session dict keyed by session ID (serial port path).
+        _lock: Thread lock.
     """
 
     def __init__(self) -> None:
-        """初始化终端管理器"""
+        """Initialize the terminal manager."""
         self._sessions: dict[str, TerminalSession] = {}
         self._lock = threading.RLock()
 
@@ -258,29 +263,29 @@ class TerminalManager:
         local_echo: bool = DEFAULT_LOCAL_ECHO,
         buffer_size: int = DEFAULT_BUFFER_SIZE,
     ) -> SessionInfo:
-        """创建终端会话
+        """Create a terminal session.
 
         Args:
-            port: 串口路径
-            line_ending: 换行符类型（CR/LF/CRLF）
-            local_echo: 是否本地回显
-            buffer_size: 输出缓冲区大小
+            port: Serial port path.
+            line_ending: Line-ending type (CR/LF/CRLF).
+            local_echo: Whether to locally echo input.
+            buffer_size: Output buffer size.
 
         Returns:
-            会话信息
+            Session information.
 
         Raises:
-            SessionExistsError: 会话已存在
-            PortNotOpenError: 串口未打开
-            InvalidLineEndingError: 无效的换行符配置
+            SessionExistsError: The session already exists.
+            PortNotOpenError: The serial port is not open.
+            InvalidLineEndingError: Invalid line-ending configuration.
         """
-        # 验证换行符配置
+        # Validate line-ending configuration
         try:
             line_ending_enum = LineEnding[line_ending.upper()]
         except KeyError:
             raise InvalidLineEndingError(line_ending)
 
-        # 检查串口是否已打开
+        # Check that the serial port is open
         manager = get_serial_manager()
         try:
             manager.get_status(port)
@@ -288,11 +293,11 @@ class TerminalManager:
             raise PortNotOpenError(port)
 
         with self._lock:
-            # 检查会话是否已存在
+            # Check whether a session already exists
             if port in self._sessions:
                 raise SessionExistsError(port)
 
-            # 创建会话
+            # Create the session
             session = TerminalSession(
                 port=port,
                 line_ending=line_ending_enum,
@@ -302,20 +307,20 @@ class TerminalManager:
             session.start()
             self._sessions[port] = session
 
-            logger.info("创建终端会话：%s", port)
+            logger.info("Terminal session created: %s", port)
             return session.get_info()
 
     def close_session(self, session_id: str) -> dict[str, Any]:
-        """关闭终端会话
+        """Close a terminal session.
 
         Args:
-            session_id: 会话ID（串口路径）
+            session_id: Session ID (serial port path).
 
         Returns:
-            操作结果
+            Operation result.
 
         Raises:
-            SessionNotFoundError: 会话不存在
+            SessionNotFoundError: Session not found.
         """
         with self._lock:
             if session_id not in self._sessions:
@@ -324,20 +329,20 @@ class TerminalManager:
             session = self._sessions.pop(session_id)
             session.stop()
 
-            logger.info("关闭终端会话：%s", session_id)
+            logger.info("Terminal session closed: %s", session_id)
             return {"success": True, "session_id": session_id}
 
     def get_session(self, session_id: str) -> TerminalSession:
-        """获取终端会话
+        """Return a terminal session.
 
         Args:
-            session_id: 会话ID（串口路径）
+            session_id: Session ID (serial port path).
 
         Returns:
-            终端会话
+            The terminal session.
 
         Raises:
-            SessionNotFoundError: 会话不存在
+            SessionNotFoundError: Session not found.
         """
         with self._lock:
             if session_id not in self._sessions:
@@ -347,20 +352,20 @@ class TerminalManager:
     def send_command(
         self, session_id: str, command: str, add_line_ending: bool = True
     ) -> dict[str, Any]:
-        """向终端发送命令
+        """Send a command to a terminal.
 
         Args:
-            session_id: 会话ID（串口路径）
-            command: 要发送的命令
-            add_line_ending: 是否自动添加换行符
+            session_id: Session ID (serial port path).
+            command: Command to send.
+            add_line_ending: Whether to automatically append the line ending.
 
         Returns:
-            发送结果
+            Send result.
 
         Raises:
-            SessionNotFoundError: 会话不存在
-            SessionClosedError: 会话已关闭
-            SendCommandFailedError: 发送失败
+            SessionNotFoundError: Session not found.
+            SessionClosedError: Session is closed.
+            SendCommandFailedError: Send failed.
         """
         session = self.get_session(session_id)
 
@@ -371,22 +376,22 @@ class TerminalManager:
         return {"success": True, "bytes_written": bytes_written}
 
     def read_output(self, session_id: str, clear: bool = True) -> dict[str, Any]:
-        """读取终端输出
+        """Read output from a terminal.
 
         Args:
-            session_id: 会话ID（串口路径）
-            clear: 是否清空缓冲区
+            session_id: Session ID (serial port path).
+            clear: Whether to clear the buffer after reading.
 
         Returns:
-            输出内容
+            Output content.
 
         Raises:
-            SessionNotFoundError: 会话不存在
+            SessionNotFoundError: Session not found.
         """
         session = self.get_session(session_id)
         data = session.read_output(clear)
 
-        # 解码为字符串，替换不可解码的字符
+        # Decode to string, replacing undecodable bytes
         text = data.decode("utf-8", errors="replace")
 
         return {
@@ -395,71 +400,73 @@ class TerminalManager:
         }
 
     def clear_buffer(self, session_id: str) -> dict[str, Any]:
-        """清空终端缓冲区
+        """Clear the terminal buffer.
 
         Args:
-            session_id: 会话ID（串口路径）
+            session_id: Session ID (serial port path).
 
         Returns:
-            操作结果
+            Operation result.
 
         Raises:
-            SessionNotFoundError: 会话不存在
+            SessionNotFoundError: Session not found.
         """
         session = self.get_session(session_id)
         session.clear_buffer()
         return {"success": True, "session_id": session_id}
 
     def list_sessions(self) -> list[dict[str, Any]]:
-        """列出所有终端会话
+        """List all terminal sessions.
 
         Returns:
-            会话信息列表
+            List of session info dicts.
         """
         with self._lock:
             return [session.get_info().to_dict() for session in self._sessions.values()]
 
     def get_session_info(self, session_id: str) -> dict[str, Any]:
-        """获取会话详细信息
+        """Return detailed session information.
 
         Args:
-            session_id: 会话ID（串口路径）
+            session_id: Session ID (serial port path).
 
         Returns:
-            会话信息
+            Session information.
 
         Raises:
-            SessionNotFoundError: 会话不存在
+            SessionNotFoundError: Session not found.
         """
         session = self.get_session(session_id)
         return session.get_info().to_dict()
 
     def shutdown(self) -> None:
-        """关闭管理器
+        """Shut down the manager.
 
-        停止所有会话。
+        Stops every session.
         """
         with self._lock:
             for session_id, session in list(self._sessions.items()):
                 try:
                     session.stop()
-                    logger.debug("关闭终端会话：%s", session_id)
+                    logger.debug("Closed terminal session: %s", session_id)
                 except Exception as e:
-                    logger.warning("关闭终端会话失败：%s - %s", session_id, e)
+                    logger.warning(
+                        "Failed to close terminal session: %s - %s", session_id, e
+                    )
             self._sessions.clear()
 
-        logger.info("终端管理器已关闭")
+        logger.info("Terminal manager has been shut down")
 
 
-# 全局终端管理器实例
+# Global terminal manager instance
 _terminal_manager: TerminalManager | None = None
 
 
 def get_terminal_manager() -> TerminalManager:
-    """获取终端管理器单例
+    """Return the terminal manager singleton.
 
     Returns:
-        终端管理器实例
+        Terminal manager instance.
     """
     global _terminal_manager
     if _terminal_manager is None:

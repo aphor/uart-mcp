@@ -1,6 +1,6 @@
-"""串口操作工具实现
+"""Serial port operation tools.
 
-提供打开、关闭、配置串口等功能。
+Provides functions for opening, closing, and configuring serial ports.
 """
 
 from typing import Any
@@ -33,21 +33,21 @@ def open_port(
     write_timeout_ms: int = DEFAULT_WRITE_TIMEOUT_MS,
     auto_reconnect: bool = True,
 ) -> dict[str, Any]:
-    """打开串口
+    """Open a serial port.
 
     Args:
-        port: 串口路径（如 /dev/ttyUSB0 或 COM1）
-        baudrate: 波特率，默认 9600
-        bytesize: 数据位，默认 8
-        parity: 校验位，默认 N（无校验）
-        stopbits: 停止位，默认 1
-        flow_control: 流控制，默认 none
-        read_timeout_ms: 读取超时（毫秒），默认 1000
-        write_timeout_ms: 写入超时（毫秒），默认 1000
-        auto_reconnect: 是否启用自动重连，默认 True
+        port: Serial port path (e.g., /dev/ttyUSB0 or COM1).
+        baudrate: Baud rate, default 9600.
+        bytesize: Data bits, default 8.
+        parity: Parity bit, default N (no parity).
+        stopbits: Stop bits, default 1.
+        flow_control: Flow control, default none.
+        read_timeout_ms: Read timeout in ms, default 1000.
+        write_timeout_ms: Write timeout in ms, default 1000.
+        auto_reconnect: Whether to enable auto-reconnect, default True.
 
     Returns:
-        串口状态信息
+        Serial port status information.
     """
     manager = get_serial_manager()
     status = manager.open_port(
@@ -65,13 +65,13 @@ def open_port(
 
 
 def close_port(port: str) -> dict[str, Any]:
-    """关闭串口
+    """Close a serial port.
 
     Args:
-        port: 串口路径
+        port: Serial port path.
 
     Returns:
-        操作结果
+        Operation result.
     """
     manager = get_serial_manager()
     return manager.close_port(port)
@@ -87,20 +87,20 @@ def set_config(
     read_timeout_ms: int | None = None,
     write_timeout_ms: int | None = None,
 ) -> dict[str, Any]:
-    """修改串口配置（热更新）
+    """Update the serial port configuration (hot update).
 
     Args:
-        port: 串口路径
-        baudrate: 波特率（可选）
-        bytesize: 数据位（可选）
-        parity: 校验位（可选）
-        stopbits: 停止位（可选）
-        flow_control: 流控制（可选）
-        read_timeout_ms: 读取超时（可选）
-        write_timeout_ms: 写入超时（可选）
+        port: Serial port path.
+        baudrate: Baud rate (optional).
+        bytesize: Data bits (optional).
+        parity: Parity bit (optional).
+        stopbits: Stop bits (optional).
+        flow_control: Flow control (optional).
+        read_timeout_ms: Read timeout (optional).
+        write_timeout_ms: Write timeout (optional).
 
     Returns:
-        更新后的串口状态
+        Updated serial port status.
     """
     manager = get_serial_manager()
     status = manager.set_config(
@@ -117,68 +117,70 @@ def set_config(
 
 
 def get_status(port: str) -> dict[str, Any]:
-    """获取串口状态
+    """Return the serial port status.
 
     Args:
-        port: 串口路径
+        port: Serial port path.
 
     Returns:
-        串口状态信息
+        Serial port status information.
     """
     manager = get_serial_manager()
     status = manager.get_status(port)
     return status.to_dict()
 
 
-# 工具定义（用于 MCP 注册）
+# Tool definitions (used for MCP registration)
 OPEN_PORT_TOOL: dict[str, Any] = {
     "name": "open_port",
-    "description": "打开指定串口，支持自定义配置参数",
+    "description": (
+        "Open the specified serial port, with optional custom configuration."
+    ),
     "inputSchema": {
         "type": "object",
         "properties": {
             "port": {
                 "type": "string",
-                "description": "串口路径，如 /dev/ttyUSB0 或 COM1",
+                "description": "Serial port path, e.g. /dev/ttyUSB0 or COM1",
             },
             "baudrate": {
                 "type": "integer",
-                "description": f"波特率，支持的值：{list(SUPPORTED_BAUDRATES)}",
+                "description": f"Baud rate. Supported values: {list(SUPPORTED_BAUDRATES)}",
                 "default": DEFAULT_BAUDRATE,
             },
             "bytesize": {
                 "type": "integer",
-                "description": f"数据位，支持的值：{list(SUPPORTED_BYTESIZES)}",
+                "description": f"Data bits. Supported values: {list(SUPPORTED_BYTESIZES)}",
                 "default": DEFAULT_BYTESIZE,
             },
             "parity": {
                 "type": "string",
-                "description": f"校验位，支持的值：{[p.value for p in Parity]}",
+                "description": f"Parity bit. Supported values: {[p.value for p in Parity]}",
                 "default": DEFAULT_PARITY.value,
             },
             "stopbits": {
                 "type": "number",
-                "description": f"停止位，支持的值：{[s.value for s in StopBits]}",
+                "description": f"Stop bits. Supported values: {[s.value for s in StopBits]}",
                 "default": float(DEFAULT_STOPBITS.value),
             },
             "flow_control": {
                 "type": "string",
-                "description": f"流控制，支持的值：{[f.value for f in FlowControl]}",
+                "description": f"Flow control. Supported values: {[f.value for f in FlowControl]}",
                 "default": DEFAULT_FLOW_CONTROL.value,
             },
             "read_timeout_ms": {
                 "type": "integer",
-                "description": "读取超时（毫秒），范围 0-60000",
+                "description": "Read timeout in ms, range 0-60000",
                 "default": DEFAULT_TIMEOUT_MS,
             },
             "write_timeout_ms": {
                 "type": "integer",
-                "description": "写入超时（毫秒），范围 0-60000",
+                "description": "Write timeout in ms, range 0-60000",
                 "default": DEFAULT_WRITE_TIMEOUT_MS,
             },
             "auto_reconnect": {
                 "type": "boolean",
-                "description": "是否启用自动重连",
+                "description": "Whether to enable auto-reconnect",
                 "default": True,
             },
         },
@@ -188,13 +190,13 @@ OPEN_PORT_TOOL: dict[str, Any] = {
 
 CLOSE_PORT_TOOL: dict[str, Any] = {
     "name": "close_port",
-    "description": "关闭指定串口连接",
+    "description": "Close the specified serial port connection.",
     "inputSchema": {
         "type": "object",
         "properties": {
             "port": {
                 "type": "string",
-                "description": "串口路径",
+                "description": "Serial port path",
             },
         },
         "required": ["port"],
@@ -203,41 +205,44 @@ CLOSE_PORT_TOOL: dict[str, Any] = {
 
 SET_CONFIG_TOOL: dict[str, Any] = {
     "name": "set_config",
-    "description": "修改已打开串口的配置（热更新，无需关闭重开）",
+    "description": (
+        "Update the configuration of an open serial port (hot update; no "
+        "close/reopen required)."
+    ),
     "inputSchema": {
         "type": "object",
         "properties": {
             "port": {
                 "type": "string",
-                "description": "串口路径",
+                "description": "Serial port path",
             },
             "baudrate": {
                 "type": "integer",
-                "description": f"波特率，支持的值：{list(SUPPORTED_BAUDRATES)}",
+                "description": f"Baud rate. Supported values: {list(SUPPORTED_BAUDRATES)}",
             },
             "bytesize": {
                 "type": "integer",
-                "description": f"数据位，支持的值：{list(SUPPORTED_BYTESIZES)}",
+                "description": f"Data bits. Supported values: {list(SUPPORTED_BYTESIZES)}",
             },
             "parity": {
                 "type": "string",
-                "description": f"校验位，支持的值：{[p.value for p in Parity]}",
+                "description": f"Parity bit. Supported values: {[p.value for p in Parity]}",
             },
             "stopbits": {
                 "type": "number",
-                "description": f"停止位，支持的值：{[s.value for s in StopBits]}",
+                "description": f"Stop bits. Supported values: {[s.value for s in StopBits]}",
             },
             "flow_control": {
                 "type": "string",
-                "description": f"流控制，支持的值：{[f.value for f in FlowControl]}",
+                "description": f"Flow control. Supported values: {[f.value for f in FlowControl]}",
             },
             "read_timeout_ms": {
                 "type": "integer",
-                "description": "读取超时（毫秒），范围 0-60000",
+                "description": "Read timeout in ms, range 0-60000",
             },
             "write_timeout_ms": {
                 "type": "integer",
-                "description": "写入超时（毫秒），范围 0-60000",
+                "description": "Write timeout in ms, range 0-60000",
             },
         },
         "required": ["port"],
@@ -246,13 +251,15 @@ SET_CONFIG_TOOL: dict[str, Any] = {
 
 GET_STATUS_TOOL: dict[str, Any] = {
     "name": "get_status",
-    "description": "获取已打开串口的当前状态和配置信息",
+    "description": (
+        "Return the current status and configuration of an open serial port."
+    ),
     "inputSchema": {
         "type": "object",
         "properties": {
             "port": {
                 "type": "string",
-                "description": "串口路径",
+                "description": "Serial port path",
             },
         },
         "required": ["port"],

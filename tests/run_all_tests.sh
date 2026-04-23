@@ -1,63 +1,63 @@
 #!/bin/bash
-# 配置管理模块完整测试脚本
+# Full test script for the configuration management module
 
-set -e  # 遇到错误停止
+set -e  # Stop on error
 
 echo "=========================================="
-echo "配置管理模块完整测试"
+echo "Configuration Management Module - Full Test"
 echo "=========================================="
 echo ""
 
-# 激活虚拟环境
+# Activate virtual environment
 if [ -d ".venv" ]; then
     source .venv/bin/activate
-    echo "✓ 已激活虚拟环境"
+    echo "Virtual environment activated"
 else
-    echo "⚠  警告：未找到 .venv，使用系统 Python"
+    echo "Warning: .venv not found, using system Python"
 fi
 
 echo ""
-echo "1. 运行单元测试..."
+echo "1. Running unit tests..."
 echo "------------------------------------------"
 python -m pytest tests/test_config_management.py -v --tb=short || {
-    echo "❌ 单元测试失败"
+    echo "FAILED: unit tests"
     exit 1
 }
-echo "✓ 单元测试通过"
+echo "PASSED: unit tests"
 
 echo ""
-echo "2. 运行场景测试：权限校验..."
+echo "2. Running scenario tests: permission checks..."
 echo "------------------------------------------"
 python tests/test_scenario_blacklist_permission.py || {
-    echo "❌ 权限场景测试失败"
+    echo "FAILED: permission scenario tests"
     exit 1
 }
-echo "✓ 权限场景测试通过"
+echo "PASSED: permission scenario tests"
 
 echo ""
-echo "3. 运行场景测试：热加载..."
+echo "3. Running scenario tests: hot-reload..."
 echo "------------------------------------------"
 python tests/test_scenario_hot_reload.py || {
-    echo "❌ 热加载场景测试失败"
+    echo "FAILED: hot-reload scenario tests"
     exit 1
 }
-echo "✓ 热加载场景测试通过"
+echo "PASSED: hot-reload scenario tests"
 
 echo ""
 echo "=========================================="
-echo "✓ 所有测试通过！"
+echo "All tests passed!"
 echo "=========================================="
 echo ""
-echo "模块功能完整实现："
-echo "  - UartConfig 数据类 ✓"
-echo "  - ConfigManager 类 ✓"
-echo "  - BlacklistManager 更新 ✓"
-echo "  - SerialManager 集成 ✓"
+echo "Module features fully implemented:"
+echo "  - UartConfig dataclass"
+echo "  - ConfigManager class"
+echo "  - BlacklistManager updates"
+echo "  - SerialManager integration"
 echo ""
-echo "规格要求完全满足："
-echo "  - 配置文件路径 ✓"
-echo "  - 权限校验 (600) ✓"
-echo "  - 错误码处理 (1005, 1008) ✓"
-echo "  - 热加载功能 ✓"
-echo "  - 黑名单管理 ✓"
+echo "Specification requirements fully satisfied:"
+echo "  - Config file paths"
+echo "  - Permission checks (600)"
+echo "  - Error code handling (1005, 1008)"
+echo "  - Hot-reload functionality"
+echo "  - Blacklist management"
 echo ""

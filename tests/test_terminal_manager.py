@@ -1,4 +1,4 @@
-"""终端管理器测试"""
+"""Tests for the terminal manager."""
 
 from unittest.mock import MagicMock, patch
 
@@ -15,10 +15,10 @@ from uart_mcp.types import LineEnding
 
 
 class TestTerminalSession:
-    """测试 TerminalSession 类"""
+    """Tests for the TerminalSession class."""
 
     def test_session_init(self):
-        """测试会话初始化"""
+        """Test session initialization."""
         session = TerminalSession(
             port="/dev/ttyUSB0",
             line_ending=LineEnding.CRLF,
@@ -34,35 +34,35 @@ class TestTerminalSession:
         assert session.is_active is False
 
     def test_session_buffer_operations(self):
-        """测试缓冲区操作"""
+        """Test buffer operations."""
         session = TerminalSession(port="/dev/ttyUSB0")
 
-        # 手动添加数据到缓冲区
+        # Manually append data to the buffer
         session._append_to_buffer(b"hello")
         session._append_to_buffer(b" world")
 
         assert session.buffer_length == 11
 
-        # 读取数据（清空）
+        # Read data (clear)
         data = session.read_output(clear=True)
         assert data == b"hello world"
         assert session.buffer_length == 0
 
     def test_session_buffer_overflow(self):
-        """测试缓冲区溢出处理"""
-        # 创建小缓冲区
+        """Test buffer overflow handling."""
+        # Create a small buffer
         session = TerminalSession(port="/dev/ttyUSB0", buffer_size=10)
 
-        # 添加超出缓冲区的数据
+        # Append data that exceeds the buffer capacity
         session._append_to_buffer(b"12345")
         session._append_to_buffer(b"67890")
         session._append_to_buffer(b"ABCDE")
 
-        # 缓冲区应该丢弃旧数据
+        # Buffer should drop older data
         assert session.buffer_length <= 10
 
     def test_session_clear_buffer(self):
-        """测试清空缓冲区"""
+        """Test clearing the buffer."""
         session = TerminalSession(port="/dev/ttyUSB0")
 
         session._append_to_buffer(b"test data")
@@ -72,7 +72,7 @@ class TestTerminalSession:
         assert session.read_output() == b""
 
     def test_session_get_info(self):
-        """测试获取会话信息"""
+        """Test fetching session info."""
         session = TerminalSession(port="/dev/ttyUSB0")
         session._append_to_buffer(b"test")
 
@@ -84,7 +84,7 @@ class TestTerminalSession:
         assert info.is_active is False
 
     def test_session_send_command_with_line_ending(self):
-        """测试发送命令（带换行符）"""
+        """Test sending a command with a line ending."""
         session = TerminalSession(
             port="/dev/ttyUSB0",
             line_ending=LineEnding.CRLF,
@@ -97,16 +97,16 @@ class TestTerminalSession:
             bytes_written = session.send_command("test", add_line_ending=True)
 
             assert bytes_written == 7
-            # 验证发送的数据包含换行符
+            # Verify the sent data includes the line ending
             mock_mgr.return_value.send_data.assert_called_once_with(
                 "/dev/ttyUSB0", b"test\r\n"
             )
 
-            # 验证本地回显
+            # Verify local echo
             assert session.buffer_length == 6  # "test\r\n"
 
     def test_session_send_command_without_line_ending(self):
-        """测试发送命令（不带换行符）"""
+        """Test sending a command without a line ending."""
         session = TerminalSession(port="/dev/ttyUSB0")
 
         with patch("uart_mcp.terminal_manager.get_serial_manager") as mock_mgr:
@@ -121,16 +121,16 @@ class TestTerminalSession:
 
 
 class TestTerminalManager:
-    """测试 TerminalManager 类"""
+    """Tests for the TerminalManager class."""
 
     def test_create_session_success(self):
-        """测试成功创建会话"""
+        """Test creating a session successfully."""
         manager = TerminalManager()
 
         with patch("uart_mcp.terminal_manager.get_serial_manager") as mock_serial_mgr:
             mock_serial_mgr.return_value.get_status.return_value = MagicMock()
-            # 模拟 read_data 抛出异常，让后台线程退出
-            mock_serial_mgr.return_value.read_data.side_effect = Exception("测试")
+            # Have read_data raise, so the background thread exits
+            mock_serial_mgr.return_value.read_data.side_effect = Exception("test")
 
             info = manager.create_session(
                 port="/dev/ttyUSB0",
@@ -144,12 +144,12 @@ class TestTerminalManager:
         manager.shutdown()
 
     def test_create_session_already_exists(self):
-        """测试创建已存在的会话"""
+        """Test creating a session that already exists."""
         manager = TerminalManager()
 
         with patch("uart_mcp.terminal_manager.get_serial_manager") as mock_serial_mgr:
             mock_serial_mgr.return_value.get_status.return_value = MagicMock()
-            mock_serial_mgr.return_value.read_data.side_effect = Exception("测试")
+            mock_serial_mgr.return_value.read_data.side_effect = Exception("test")
 
             manager.create_session(port="/dev/ttyUSB0")
 
@@ -159,11 +159,11 @@ class TestTerminalManager:
         manager.shutdown()
 
     def test_create_session_port_not_open(self):
-        """测试在未打开的串口上创建会话"""
+        """Test creating a session on a port that is not open."""
         manager = TerminalManager()
 
         with patch("uart_mcp.terminal_manager.get_serial_manager") as mock_serial_mgr:
-            mock_serial_mgr.return_value.get_status.side_effect = Exception("未打开")
+            mock_serial_mgr.return_value.get_status.side_effect = Exception("not open")
 
             with pytest.raises(PortNotOpenError):
                 manager.create_session(port="/dev/ttyUSB0")
@@ -171,7 +171,7 @@ class TestTerminalManager:
         manager.shutdown()
 
     def test_create_session_invalid_line_ending(self):
-        """测试无效的换行符配置"""
+        """Test an invalid line-ending configuration."""
         manager = TerminalManager()
 
         with patch("uart_mcp.terminal_manager.get_serial_manager") as mock_serial_mgr:
@@ -183,12 +183,12 @@ class TestTerminalManager:
         manager.shutdown()
 
     def test_close_session_success(self):
-        """测试成功关闭会话"""
+        """Test closing a session successfully."""
         manager = TerminalManager()
 
         with patch("uart_mcp.terminal_manager.get_serial_manager") as mock_serial_mgr:
             mock_serial_mgr.return_value.get_status.return_value = MagicMock()
-            mock_serial_mgr.return_value.read_data.side_effect = Exception("测试")
+            mock_serial_mgr.return_value.read_data.side_effect = Exception("test")
 
             manager.create_session(port="/dev/ttyUSB0")
             result = manager.close_session("/dev/ttyUSB0")
@@ -199,7 +199,7 @@ class TestTerminalManager:
         manager.shutdown()
 
     def test_close_session_not_found(self):
-        """测试关闭不存在的会话"""
+        """Test closing a session that does not exist."""
         manager = TerminalManager()
 
         with pytest.raises(SessionNotFoundError):
@@ -208,12 +208,12 @@ class TestTerminalManager:
         manager.shutdown()
 
     def test_send_command_success(self):
-        """测试成功发送命令"""
+        """Test sending a command successfully."""
         manager = TerminalManager()
 
         with patch("uart_mcp.terminal_manager.get_serial_manager") as mock_serial_mgr:
             mock_serial_mgr.return_value.get_status.return_value = MagicMock()
-            # 让 read_data 返回空数据，避免后台线程退出
+            # Have read_data return empty data so the background thread keeps running
             mock_serial_mgr.return_value.read_data.return_value = b""
             mock_serial_mgr.return_value.send_data.return_value = 7
 
@@ -226,7 +226,7 @@ class TestTerminalManager:
         manager.shutdown()
 
     def test_send_command_session_not_found(self):
-        """测试向不存在的会话发送命令"""
+        """Test sending a command to a session that does not exist."""
         manager = TerminalManager()
 
         with pytest.raises(SessionNotFoundError):
@@ -235,16 +235,16 @@ class TestTerminalManager:
         manager.shutdown()
 
     def test_read_output_success(self):
-        """测试成功读取输出"""
+        """Test reading output successfully."""
         manager = TerminalManager()
 
         with patch("uart_mcp.terminal_manager.get_serial_manager") as mock_serial_mgr:
             mock_serial_mgr.return_value.get_status.return_value = MagicMock()
-            mock_serial_mgr.return_value.read_data.side_effect = Exception("测试")
+            mock_serial_mgr.return_value.read_data.side_effect = Exception("test")
 
             manager.create_session(port="/dev/ttyUSB0")
 
-            # 手动向缓冲区添加数据
+            # Manually add data to the buffer
             session = manager.get_session("/dev/ttyUSB0")
             session._append_to_buffer(b"test output")
 
@@ -256,12 +256,12 @@ class TestTerminalManager:
         manager.shutdown()
 
     def test_clear_buffer_success(self):
-        """测试成功清空缓冲区"""
+        """Test clearing the buffer successfully."""
         manager = TerminalManager()
 
         with patch("uart_mcp.terminal_manager.get_serial_manager") as mock_serial_mgr:
             mock_serial_mgr.return_value.get_status.return_value = MagicMock()
-            mock_serial_mgr.return_value.read_data.side_effect = Exception("测试")
+            mock_serial_mgr.return_value.read_data.side_effect = Exception("test")
 
             manager.create_session(port="/dev/ttyUSB0")
 
@@ -276,12 +276,12 @@ class TestTerminalManager:
         manager.shutdown()
 
     def test_list_sessions(self):
-        """测试列出所有会话"""
+        """Test listing all sessions."""
         manager = TerminalManager()
 
         with patch("uart_mcp.terminal_manager.get_serial_manager") as mock_serial_mgr:
             mock_serial_mgr.return_value.get_status.return_value = MagicMock()
-            mock_serial_mgr.return_value.read_data.side_effect = Exception("测试")
+            mock_serial_mgr.return_value.read_data.side_effect = Exception("test")
 
             manager.create_session(port="/dev/ttyUSB0")
             manager.create_session(port="/dev/ttyUSB1")
@@ -296,12 +296,12 @@ class TestTerminalManager:
         manager.shutdown()
 
     def test_get_session_info_success(self):
-        """测试获取会话信息"""
+        """Test fetching session info."""
         manager = TerminalManager()
 
         with patch("uart_mcp.terminal_manager.get_serial_manager") as mock_serial_mgr:
             mock_serial_mgr.return_value.get_status.return_value = MagicMock()
-            mock_serial_mgr.return_value.read_data.side_effect = Exception("测试")
+            mock_serial_mgr.return_value.read_data.side_effect = Exception("test")
 
             manager.create_session(port="/dev/ttyUSB0")
             info = manager.get_session_info("/dev/ttyUSB0")
@@ -312,7 +312,7 @@ class TestTerminalManager:
         manager.shutdown()
 
     def test_get_session_info_not_found(self):
-        """测试获取不存在的会话信息"""
+        """Test fetching info for a session that does not exist."""
         manager = TerminalManager()
 
         with pytest.raises(SessionNotFoundError):
@@ -321,12 +321,12 @@ class TestTerminalManager:
         manager.shutdown()
 
     def test_shutdown(self):
-        """测试关闭管理器"""
+        """Test shutting down the manager."""
         manager = TerminalManager()
 
         with patch("uart_mcp.terminal_manager.get_serial_manager") as mock_serial_mgr:
             mock_serial_mgr.return_value.get_status.return_value = MagicMock()
-            mock_serial_mgr.return_value.read_data.side_effect = Exception("测试")
+            mock_serial_mgr.return_value.read_data.side_effect = Exception("test")
 
             manager.create_session(port="/dev/ttyUSB0")
             manager.create_session(port="/dev/ttyUSB1")
@@ -337,7 +337,7 @@ class TestTerminalManager:
 
 
 class TestLineEndingConfigurations:
-    """测试不同换行符配置"""
+    """Test different line-ending configurations."""
 
     @pytest.mark.parametrize(
         "line_ending,expected_suffix",
@@ -348,7 +348,7 @@ class TestLineEndingConfigurations:
         ],
     )
     def test_different_line_endings(self, line_ending, expected_suffix):
-        """测试不同换行符"""
+        """Test different line endings."""
         session = TerminalSession(
             port="/dev/ttyUSB0",
             line_ending=LineEnding[line_ending],

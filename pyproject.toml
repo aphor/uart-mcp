@@ -1,7 +1,7 @@
 [project]
 name = "uart-mcp"
 version = "0.1.0"
-description = "UART MCP Server - 为AI助手提供串口通信能力"
+description = "UART MCP Server - Serial port communication for AI assistants"
 readme = "README.md"
 requires-python = ">=3.13"
 license = "MIT"
@@ -35,7 +35,7 @@ target-version = "py313"
 
 [tool.ruff.lint]
 select = ["E", "F", "I", "N", "W"]
-ignore = ["E501"]  # 忽略行长度检查，使用 line-length 控制
+ignore = ["E501"]  # line-length is enforced via the line-length setting above
 
 [tool.mypy]
 python_version = "3.13"
