@@ -4,11 +4,13 @@ Provides the main server logic for the UART MCP Server.
 """
 
 import asyncio
+import json
 import logging
 from typing import Any
 
 import mcp.server.stdio
 import mcp.types as types
+from mcp.server import ServerRequestContext
 from mcp.server.lowlevel import NotificationOptions, Server
 from mcp.server.models import InitializationOptions
 
@@ -56,93 +58,92 @@ logging.basicConfig(
 )
 logger = logging.getLogger(__name__)
 
-# Create the MCP server
-server = Server("uart-mcp")
 
-
-@server.list_tools()  # type: ignore[no-untyped-call, untyped-decorator]
-async def handle_list_tools() -> list[types.Tool]:
+async def handle_list_tools(
+    ctx: ServerRequestContext, params: types.PaginatedRequestParams | None
+) -> types.ListToolsResult:
     """Return the list of available tools."""
-    return [
+    return types.ListToolsResult(tools=[
         types.Tool(
             name=LIST_PORTS_TOOL["name"],
             description=LIST_PORTS_TOOL["description"],
-            inputSchema=LIST_PORTS_TOOL["inputSchema"],
+            input_schema=LIST_PORTS_TOOL["inputSchema"],
         ),
         types.Tool(
             name=OPEN_PORT_TOOL["name"],
             description=OPEN_PORT_TOOL["description"],
-            inputSchema=OPEN_PORT_TOOL["inputSchema"],
+            input_schema=OPEN_PORT_TOOL["inputSchema"],
         ),
         types.Tool(
             name=CLOSE_PORT_TOOL["name"],
             description=CLOSE_PORT_TOOL["description"],
-            inputSchema=CLOSE_PORT_TOOL["inputSchema"],
+            input_schema=CLOSE_PORT_TOOL["inputSchema"],
         ),
         types.Tool(
             name=SET_CONFIG_TOOL["name"],
             description=SET_CONFIG_TOOL["description"],
-            inputSchema=SET_CONFIG_TOOL["inputSchema"],
+            input_schema=SET_CONFIG_TOOL["inputSchema"],
         ),
         types.Tool(
             name=GET_STATUS_TOOL["name"],
             description=GET_STATUS_TOOL["description"],
-            inputSchema=GET_STATUS_TOOL["inputSchema"],
+            input_schema=GET_STATUS_TOOL["inputSchema"],
         ),
         types.Tool(
             name=SEND_DATA_TOOL["name"],
             description=SEND_DATA_TOOL["description"],
-            inputSchema=SEND_DATA_TOOL["inputSchema"],
+            input_schema=SEND_DATA_TOOL["inputSchema"],
         ),
         types.Tool(
             name=READ_DATA_TOOL["name"],
             description=READ_DATA_TOOL["description"],
-            inputSchema=READ_DATA_TOOL["inputSchema"],
+            input_schema=READ_DATA_TOOL["inputSchema"],
         ),
         # Terminal session tools
         types.Tool(
             name=CREATE_SESSION_TOOL["name"],
             description=CREATE_SESSION_TOOL["description"],
-            inputSchema=CREATE_SESSION_TOOL["inputSchema"],
+            input_schema=CREATE_SESSION_TOOL["inputSchema"],
         ),
         types.Tool(
             name=CLOSE_SESSION_TOOL["name"],
             description=CLOSE_SESSION_TOOL["description"],
-            inputSchema=CLOSE_SESSION_TOOL["inputSchema"],
+            input_schema=CLOSE_SESSION_TOOL["inputSchema"],
         ),
         types.Tool(
             name=SEND_COMMAND_TOOL["name"],
             description=SEND_COMMAND_TOOL["description"],
-            inputSchema=SEND_COMMAND_TOOL["inputSchema"],
+            input_schema=SEND_COMMAND_TOOL["inputSchema"],
         ),
         types.Tool(
             name=READ_OUTPUT_TOOL["name"],
             description=READ_OUTPUT_TOOL["description"],
-            inputSchema=READ_OUTPUT_TOOL["inputSchema"],
+            input_schema=READ_OUTPUT_TOOL["inputSchema"],
         ),
         types.Tool(
             name=LIST_SESSIONS_TOOL["name"],
             description=LIST_SESSIONS_TOOL["description"],
-            inputSchema=LIST_SESSIONS_TOOL["inputSchema"],
+            input_schema=LIST_SESSIONS_TOOL["inputSchema"],
         ),
         types.Tool(
             name=GET_SESSION_INFO_TOOL["name"],
             description=GET_SESSION_INFO_TOOL["description"],
-            inputSchema=GET_SESSION_INFO_TOOL["inputSchema"],
+            input_schema=GET_SESSION_INFO_TOOL["inputSchema"],
         ),
         types.Tool(
             name=CLEAR_BUFFER_TOOL["name"],
             description=CLEAR_BUFFER_TOOL["description"],
-            inputSchema=CLEAR_BUFFER_TOOL["inputSchema"],
+            input_schema=CLEAR_BUFFER_TOOL["inputSchema"],
         ),
-    ]
+    ])
 
 
-@server.call_tool()  # type: ignore[untyped-decorator]
 async def handle_call_tool(
-    name: str, arguments: dict[str, Any]
-) -> list[types.TextContent]:
+    ctx: ServerRequestContext, params: types.CallToolRequestParams
+) -> types.CallToolResult:
     """Handle a tool call."""
+    name = params.name
+    arguments = params.arguments or {}
     try:
         result: Any
         if name == "list_ports":
@@ -178,25 +179,31 @@ async def handle_call_tool(
             raise ValueError(f"Unknown tool: {name}")
 
         # Return the result as JSON
-        import json
-
         text = json.dumps(result, ensure_ascii=False)
-        return [types.TextContent(type="text", text=text)]
+        return types.CallToolResult(content=[types.TextContent(type="text", text=text)])
 
     except SerialError as e:
         # Serial port error: return the error information
-        import json
-
         text = json.dumps(e.to_dict(), ensure_ascii=False)
-        return [types.TextContent(type="text", text=text)]
+        return types.CallToolResult(
+            content=[types.TextContent(type="text", text=text)], is_error=True
+        )
 
     except Exception as e:
         # Other errors
-        import json
-
         error_response = {"error": {"code": -1, "message": f"Internal error: {e!s}"}}
         text = json.dumps(error_response, ensure_ascii=False)
-        return [types.TextContent(type="text", text=text)]
+        return types.CallToolResult(
+            content=[types.TextContent(type="text", text=text)], is_error=True
+        )
+
+
+# Create the MCP server
+server: Server = Server(
+    "uart-mcp",
+    on_list_tools=handle_list_tools,
+    on_call_tool=handle_call_tool,
+)
 
 
 async def run_server() -> None:

@@ -4,9 +4,16 @@ Covers handle_list_tools and handle_call_tool.
 """
 
 import json
+from typing import Any
 from unittest.mock import AsyncMock, MagicMock, patch
 
+import mcp.types as types
 import pytest
+
+# handle_list_tools/handle_call_tool ignore the request context entirely, so
+# a placeholder stands in for the real ServerRequestContext the mcp runtime
+# would otherwise construct per-request.
+_CTX: Any = None
 
 
 class TestHandleListTools:
@@ -17,7 +24,8 @@ class TestHandleListTools:
         """Test that handle_list_tools returns all tools."""
         from uart_mcp.server import handle_list_tools
 
-        tools = await handle_list_tools()
+        result = await handle_list_tools(_CTX, None)
+        tools = result.tools
 
         # Verify the returned tool list
         assert isinstance(tools, list)
@@ -47,116 +55,109 @@ class TestHandleListTools:
         assert "clear_buffer" in tool_names
 
 
+async def _call_tool(name: str, arguments: dict[str, Any]) -> types.CallToolResult:
+    """Invoke handle_call_tool with the mcp 2.x request-params signature."""
+    from uart_mcp.server import handle_call_tool
+
+    return await handle_call_tool(_CTX, types.CallToolRequestParams(name=name, arguments=arguments))
+
+
 class TestHandleCallTool:
     """Tests for handle_call_tool."""
 
     @pytest.mark.asyncio
     async def test_call_list_ports(self, mock_list_ports_with_devices, reset_managers):
         """Test calling the list_ports tool."""
-        from uart_mcp.server import handle_call_tool
+        result = await _call_tool("list_ports", {})
 
-        result = await handle_call_tool("list_ports", {})
+        assert len(result.content) == 1
+        assert result.content[0].type == "text"
 
-        assert len(result) == 1
-        assert result[0].type == "text"
-
-        data = json.loads(result[0].text)
+        data = json.loads(result.content[0].text)
         assert isinstance(data, list)
         assert len(data) == 2
 
     @pytest.mark.asyncio
     async def test_call_open_port(self, mock_serial_loopback, mock_list_ports_with_devices, reset_managers):
         """Test calling the open_port tool."""
-        from uart_mcp.server import handle_call_tool
-
-        result = await handle_call_tool("open_port", {
+        result = await _call_tool("open_port", {
             "port": "/dev/ttyMOCK0",
             "baudrate": 115200
         })
 
-        assert len(result) == 1
-        data = json.loads(result[0].text)
+        assert len(result.content) == 1
+        data = json.loads(result.content[0].text)
         assert data.get("is_open") is True
 
     @pytest.mark.asyncio
     async def test_call_get_status(self, mock_serial_loopback, mock_list_ports_with_devices, reset_managers):
         """Test calling the get_status tool."""
-        from uart_mcp.server import handle_call_tool
-
         # Open the port first
-        await handle_call_tool("open_port", {"port": "/dev/ttyMOCK0", "baudrate": 115200})
+        await _call_tool("open_port", {"port": "/dev/ttyMOCK0", "baudrate": 115200})
 
-        result = await handle_call_tool("get_status", {"port": "/dev/ttyMOCK0"})
+        result = await _call_tool("get_status", {"port": "/dev/ttyMOCK0"})
 
-        assert len(result) == 1
-        data = json.loads(result[0].text)
+        assert len(result.content) == 1
+        data = json.loads(result.content[0].text)
         assert data.get("is_open") is True
 
     @pytest.mark.asyncio
     async def test_call_set_config(self, mock_serial_loopback, mock_list_ports_with_devices, reset_managers):
         """Test calling the set_config tool."""
-        from uart_mcp.server import handle_call_tool
-
         # Open the port first
-        await handle_call_tool("open_port", {"port": "/dev/ttyMOCK0", "baudrate": 115200})
+        await _call_tool("open_port", {"port": "/dev/ttyMOCK0", "baudrate": 115200})
 
-        result = await handle_call_tool("set_config", {
+        result = await _call_tool("set_config", {
             "port": "/dev/ttyMOCK0",
             "baudrate": 9600
         })
 
-        assert len(result) == 1
-        data = json.loads(result[0].text)
+        assert len(result.content) == 1
+        data = json.loads(result.content[0].text)
         assert data.get("config", {}).get("baudrate") == 9600
 
     @pytest.mark.asyncio
     async def test_call_send_data(self, mock_serial_loopback, mock_list_ports_with_devices, reset_managers):
         """Test calling the send_data tool."""
-        from uart_mcp.server import handle_call_tool
-
         # Open the port first
-        await handle_call_tool("open_port", {"port": "/dev/ttyMOCK0", "baudrate": 115200})
+        await _call_tool("open_port", {"port": "/dev/ttyMOCK0", "baudrate": 115200})
 
-        result = await handle_call_tool("send_data", {
+        result = await _call_tool("send_data", {
             "port": "/dev/ttyMOCK0",
             "data": "Hello",
             "is_binary": False
         })
 
-        assert len(result) == 1
-        data = json.loads(result[0].text)
+        assert len(result.content) == 1
+        data = json.loads(result.content[0].text)
         assert data.get("success") is True
 
     @pytest.mark.asyncio
     async def test_call_read_data(self, mock_serial_loopback, mock_list_ports_with_devices, reset_managers):
         """Test calling the read_data tool."""
-        from uart_mcp.server import handle_call_tool
-
         # Open the port and send data first
-        await handle_call_tool("open_port", {"port": "/dev/ttyMOCK0", "baudrate": 115200})
-        await handle_call_tool("send_data", {"port": "/dev/ttyMOCK0", "data": "Test", "is_binary": False})
+        await _call_tool("open_port", {"port": "/dev/ttyMOCK0", "baudrate": 115200})
+        await _call_tool("send_data", {"port": "/dev/ttyMOCK0", "data": "Test", "is_binary": False})
 
-        result = await handle_call_tool("read_data", {
+        result = await _call_tool("read_data", {
             "port": "/dev/ttyMOCK0",
             "is_binary": False
         })
 
-        assert len(result) == 1
-        data = json.loads(result[0].text)
+        assert len(result.content) == 1
+        data = json.loads(result.content[0].text)
         assert "Test" in data.get("data", "")
 
     @pytest.mark.asyncio
     async def test_call_close_port(self, mock_serial_loopback, mock_list_ports_with_devices, reset_managers):
         """Test calling the close_port tool."""
-        from uart_mcp.server import handle_call_tool
-
         # Open the port first
-        await handle_call_tool("open_port", {"port": "/dev/ttyMOCK0", "baudrate": 115200})
+        await _call_tool("open_port", {"port": "/dev/ttyMOCK0", "baudrate": 115200})
 
-        result = await handle_call_tool("close_port", {"port": "/dev/ttyMOCK0"})
+        result = await _call_tool("close_port", {"port": "/dev/ttyMOCK0"})
 
-        assert len(result) == 1
-        data = json.loads(result[0].text)
+        assert len(result.content) == 1
+        data = json.loads(result.content[0].text)
         assert data.get("success") is True
 
     # ========== Terminal session tool tests ==========
@@ -164,108 +165,94 @@ class TestHandleCallTool:
     @pytest.mark.asyncio
     async def test_call_create_session(self, mock_serial_loopback, mock_list_ports_with_devices, reset_managers):
         """Test calling the create_session tool."""
-        from uart_mcp.server import handle_call_tool
-
         # Open the port first
-        await handle_call_tool("open_port", {"port": "/dev/ttyMOCK0", "baudrate": 115200})
+        await _call_tool("open_port", {"port": "/dev/ttyMOCK0", "baudrate": 115200})
 
-        result = await handle_call_tool("create_session", {"port": "/dev/ttyMOCK0"})
+        result = await _call_tool("create_session", {"port": "/dev/ttyMOCK0"})
 
-        assert len(result) == 1
-        data = json.loads(result[0].text)
+        assert len(result.content) == 1
+        data = json.loads(result.content[0].text)
         assert data.get("session_id") == "/dev/ttyMOCK0"
 
     @pytest.mark.asyncio
     async def test_call_list_sessions(self, mock_serial_loopback, mock_list_ports_with_devices, reset_managers):
         """Test calling the list_sessions tool."""
-        from uart_mcp.server import handle_call_tool
-
         # Open the port and create a session first
-        await handle_call_tool("open_port", {"port": "/dev/ttyMOCK0", "baudrate": 115200})
-        await handle_call_tool("create_session", {"port": "/dev/ttyMOCK0"})
+        await _call_tool("open_port", {"port": "/dev/ttyMOCK0", "baudrate": 115200})
+        await _call_tool("create_session", {"port": "/dev/ttyMOCK0"})
 
-        result = await handle_call_tool("list_sessions", {})
+        result = await _call_tool("list_sessions", {})
 
-        assert len(result) == 1
-        data = json.loads(result[0].text)
+        assert len(result.content) == 1
+        data = json.loads(result.content[0].text)
         assert "sessions" in data
 
     @pytest.mark.asyncio
     async def test_call_get_session_info(self, mock_serial_loopback, mock_list_ports_with_devices, reset_managers):
         """Test calling the get_session_info tool."""
-        from uart_mcp.server import handle_call_tool
-
         # Open the port and create a session first
-        await handle_call_tool("open_port", {"port": "/dev/ttyMOCK0", "baudrate": 115200})
-        await handle_call_tool("create_session", {"port": "/dev/ttyMOCK0"})
+        await _call_tool("open_port", {"port": "/dev/ttyMOCK0", "baudrate": 115200})
+        await _call_tool("create_session", {"port": "/dev/ttyMOCK0"})
 
-        result = await handle_call_tool("get_session_info", {"session_id": "/dev/ttyMOCK0"})
+        result = await _call_tool("get_session_info", {"session_id": "/dev/ttyMOCK0"})
 
-        assert len(result) == 1
-        data = json.loads(result[0].text)
+        assert len(result.content) == 1
+        data = json.loads(result.content[0].text)
         assert data.get("session_id") == "/dev/ttyMOCK0"
 
     @pytest.mark.asyncio
     async def test_call_send_command(self, mock_serial_loopback, mock_list_ports_with_devices, reset_managers):
         """Test calling the send_command tool."""
-        from uart_mcp.server import handle_call_tool
-
         # Open the port and create a session first
-        await handle_call_tool("open_port", {"port": "/dev/ttyMOCK0", "baudrate": 115200})
-        await handle_call_tool("create_session", {"port": "/dev/ttyMOCK0"})
+        await _call_tool("open_port", {"port": "/dev/ttyMOCK0", "baudrate": 115200})
+        await _call_tool("create_session", {"port": "/dev/ttyMOCK0"})
 
-        result = await handle_call_tool("send_command", {
+        result = await _call_tool("send_command", {
             "session_id": "/dev/ttyMOCK0",
             "command": "AT"
         })
 
-        assert len(result) == 1
-        data = json.loads(result[0].text)
+        assert len(result.content) == 1
+        data = json.loads(result.content[0].text)
         assert data.get("success") is True
 
     @pytest.mark.asyncio
     async def test_call_read_output(self, mock_serial_loopback, mock_list_ports_with_devices, reset_managers):
         """Test calling the read_output tool."""
-        from uart_mcp.server import handle_call_tool
-
         # Open the port and create a session first
-        await handle_call_tool("open_port", {"port": "/dev/ttyMOCK0", "baudrate": 115200})
-        await handle_call_tool("create_session", {"port": "/dev/ttyMOCK0"})
+        await _call_tool("open_port", {"port": "/dev/ttyMOCK0", "baudrate": 115200})
+        await _call_tool("create_session", {"port": "/dev/ttyMOCK0"})
 
-        result = await handle_call_tool("read_output", {"session_id": "/dev/ttyMOCK0"})
+        result = await _call_tool("read_output", {"session_id": "/dev/ttyMOCK0"})
 
-        assert len(result) == 1
-        data = json.loads(result[0].text)
+        assert len(result.content) == 1
+        data = json.loads(result.content[0].text)
         assert "data" in data
 
     @pytest.mark.asyncio
     async def test_call_clear_buffer(self, mock_serial_loopback, mock_list_ports_with_devices, reset_managers):
         """Test calling the clear_buffer tool."""
-        from uart_mcp.server import handle_call_tool
-
         # Open the port and create a session first
-        await handle_call_tool("open_port", {"port": "/dev/ttyMOCK0", "baudrate": 115200})
-        await handle_call_tool("create_session", {"port": "/dev/ttyMOCK0"})
+        await _call_tool("open_port", {"port": "/dev/ttyMOCK0", "baudrate": 115200})
+        await _call_tool("create_session", {"port": "/dev/ttyMOCK0"})
 
-        result = await handle_call_tool("clear_buffer", {"session_id": "/dev/ttyMOCK0"})
+        result = await _call_tool("clear_buffer", {"session_id": "/dev/ttyMOCK0"})
 
-        assert len(result) == 1
-        data = json.loads(result[0].text)
+        assert len(result.content) == 1
+        data = json.loads(result.content[0].text)
         assert data.get("success") is True
 
     @pytest.mark.asyncio
     async def test_call_close_session(self, mock_serial_loopback, mock_list_ports_with_devices, reset_managers):
         """Test calling the close_session tool."""
-        from uart_mcp.server import handle_call_tool
-
         # Open the port and create a session first
-        await handle_call_tool("open_port", {"port": "/dev/ttyMOCK0", "baudrate": 115200})
-        await handle_call_tool("create_session", {"port": "/dev/ttyMOCK0"})
+        await _call_tool("open_port", {"port": "/dev/ttyMOCK0", "baudrate": 115200})
+        await _call_tool("create_session", {"port": "/dev/ttyMOCK0"})
 
-        result = await handle_call_tool("close_session", {"session_id": "/dev/ttyMOCK0"})
+        result = await _call_tool("close_session", {"session_id": "/dev/ttyMOCK0"})
 
-        assert len(result) == 1
-        data = json.loads(result[0].text)
+        assert len(result.content) == 1
+        data = json.loads(result.content[0].text)
         assert data.get("success") is True
 
     # ========== Error-handling tests ==========
@@ -273,39 +260,36 @@ class TestHandleCallTool:
     @pytest.mark.asyncio
     async def test_call_unknown_tool(self, reset_managers):
         """Test that calling an unknown tool returns an error."""
-        from uart_mcp.server import handle_call_tool
+        result = await _call_tool("unknown_tool", {})
 
-        result = await handle_call_tool("unknown_tool", {})
-
-        assert len(result) == 1
-        data = json.loads(result[0].text)
+        assert result.is_error is True
+        assert len(result.content) == 1
+        data = json.loads(result.content[0].text)
         assert "error" in data
         assert "Unknown tool" in data["error"]["message"]
 
     @pytest.mark.asyncio
     async def test_serial_error_handling(self, reset_managers):
         """Test SerialError handling."""
-        from uart_mcp.server import handle_call_tool
-
         # Fetching the status of an unopened port should raise SerialError
-        result = await handle_call_tool("get_status", {"port": "/dev/ttyNONEXIST"})
+        result = await _call_tool("get_status", {"port": "/dev/ttyNONEXIST"})
 
-        assert len(result) == 1
-        data = json.loads(result[0].text)
+        assert result.is_error is True
+        assert len(result.content) == 1
+        data = json.loads(result.content[0].text)
         assert "error" in data
         assert "code" in data["error"]
 
     @pytest.mark.asyncio
     async def test_general_exception_handling(self, reset_managers):
         """Test handling of a generic exception."""
-        from uart_mcp.server import handle_call_tool
-
         # Patch the correct module path to trigger a generic exception
         with patch("uart_mcp.server.list_ports", side_effect=RuntimeError("test exception")):
-            result = await handle_call_tool("list_ports", {})
+            result = await _call_tool("list_ports", {})
 
-        assert len(result) == 1
-        data = json.loads(result[0].text)
+        assert result.is_error is True
+        assert len(result.content) == 1
+        data = json.loads(result.content[0].text)
         assert "error" in data
         assert "Internal error" in data["error"]["message"]
 
