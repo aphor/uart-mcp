@@ -8,7 +8,7 @@ license = "MIT"
 keywords = ["mcp", "uart", "serial", "ai", "llm"]
 dependencies = [
     "pyserial>=3.5",
-    "mcp>=1.0.0",
+    "mcp>=1.0.0,<2.0.0",
 ]
 
 [project.scripts]
